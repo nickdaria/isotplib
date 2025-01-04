@@ -1,5 +1,7 @@
 #include "FlexISOTP.h"
+
 #include <string.h>
+#include "ISOTPConversions.h"
 
 //  Helper to reset the session if no send was requested in the callback
 void callbackCleanup(flexisotp_session_t* session) {
@@ -421,10 +423,10 @@ uint32_t tx_transmitting(flexisotp_session_t* session, uint8_t* frame_data, size
             frame_data[ISOTP_SPEC_FRAME_TYPE_IDX] |= (ISOTP_SPEC_FRAME_FIRST << ISOTP_SPEC_FRAME_TYPE_SHIFT) & ISOTP_SPEC_FRAME_TYPE_MASK;
 
             //  Set the length
-            frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_MSB_IDX] &= ~ISOTP_SPEC_FRAME_FIRST_LEN_MSB_MASK; // Clear the length bits
+            frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_MSB_IDX] &= (uint8_t)~ISOTP_SPEC_FRAME_FIRST_LEN_MSB_MASK; // Clear the length bits
             frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_MSB_IDX] |= (session->full_transmission_length >> 8) & ISOTP_SPEC_FRAME_FIRST_LEN_MSB_MASK;
 
-            frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_LSB_IDX] &= ~ISOTP_SPEC_FRAME_FIRST_LEN_LSB_MASK; // Clear the length bits
+            frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_LSB_IDX] &= (uint8_t)~ISOTP_SPEC_FRAME_FIRST_LEN_LSB_MASK; // Clear the length bits
             frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_LSB_IDX] |= session->full_transmission_length & ISOTP_SPEC_FRAME_FIRST_LEN_LSB_MASK;
 
             //  Setup parameters
