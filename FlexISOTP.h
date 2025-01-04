@@ -2,14 +2,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-
-// ISO-TP frame types
-typedef enum {
-	FRAME_SINGLE = 0x00,
-	FRAME_FIRST = 0x01,
-	FRAME_CONSECUTIVE = 0x02,
-	FRAME_FLOW_CONTROL = 0x03
-} flexisotp_frame_type_t;
+#include <stddef.h>
+#include "ISOTPConstants.h"
 
 // ISO-TP session states
 typedef enum {
@@ -38,6 +32,7 @@ typedef struct {
 	void (*callback_can_tx)(void* context, const uint8_t* data, const size_t length);
 	void (*callback_peek_first_frame) (void* context, const uint8_t* data, const size_t length, const size_t protocol_offset);
 	void (*callback_peek_consecutive_frame) (void* context, const uint8_t* data, const size_t length, const size_t protocol_offset);
+	void (*error_invalid_frame) (void* context, const uint8_t* data, const size_t length);
 	void (*error_unexpected_frame_type) (void* context, const uint8_t* data, const size_t length);
 	void (*error_consecutive_out_of_order) (void* context, const uint8_t* data, const size_t length);
 
@@ -64,3 +59,34 @@ typedef struct {
 	size_t rx_expected_len;						//  Reported length of the transmission being received
 	uint8_t rx_last_consecutive;				//	Last consecutive frame index received
 } flexisotp_session_t;
+
+/**
+ * @brief Resets entire session to default state, callbacks to NULL, and loads provided buffer data
+ * 
+ * @param session 
+ * @param tx_buffer 
+ * @param tx_len 
+ * @param rx_buffer 
+ * @param rx_len 
+ */
+void flexisotp_session_init(flexisotp_session_t* session, void* tx_buffer, size_t tx_len, void* rx_buffer, size_t rx_len);
+
+/**
+ * @brief Processes a recieved CAN frame and associated callbacks
+ * 
+ * @param session 
+ * @param data 
+ * @param length 
+ */
+void flexisotp_session_can_rx(flexisotp_session_t* session, const uint8_t* data, const size_t length);
+
+/**
+ * @brief Checks if a CAN frame is queued to be sent, and loads the contents to the provided buffer if so
+ * 
+ * @param session 
+ * @param data 
+ * @param length 
+ * @return true 
+ * @return false 
+ */
+bool flexisotp_session_can_tx(flexisotp_session_t* session, uint8_t* data, size_t* length);
