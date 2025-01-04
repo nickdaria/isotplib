@@ -27,14 +27,20 @@ typedef struct {
 
 // FlexISOTP session
 typedef struct {
-	//	Callbacks
-	void (*callback_can_rx)(void* context, const uint8_t* data, const size_t length);
-	void (*callback_can_tx)(void* context, const uint8_t* data, const size_t length);
-	void (*callback_peek_first_frame) (void* context, const uint8_t* data, const size_t length, const size_t protocol_offset);
-	void (*callback_peek_consecutive_frame) (void* context, const uint8_t* data, const size_t length, const size_t protocol_offset);
-	void (*error_invalid_frame) (void* context, const uint8_t* data, const size_t length);
-	void (*error_unexpected_frame_type) (void* context, const uint8_t* data, const size_t length);
-	void (*error_consecutive_out_of_order) (void* context, const uint8_t* data, const size_t length);
+	//	Raw CAN Callbacks
+	void (*callback_can_rx)(void* context, const uint8_t* msg_data, const size_t msg_length);
+	void (*callback_can_tx)(void* context, const uint8_t* msg_data, const size_t msg_length);
+
+	//	Error Callbacks
+	void (*error_invalid_frame) (void* context, const isotp_spec_frame_type_t rx_frame_type, const uint8_t* msg_data, const size_t msg_length);
+	void (*error_transmission_too_large) (void* context, const uint8_t* msg_data, const size_t msg_length, const size_t requested_size);
+	void (*error_unexpected_frame_type) (void* context, const uint8_t* msg_data, const size_t msg_length);
+	void (*error_consecutive_out_of_order) (void* context, const uint8_t* msg_data, const size_t msg_length);
+
+	//	ISO-TP Data Callbacks
+	void (*callback_transmission_rx)(void* context);
+	void (*callback_peek_first_frame) (void* context, const uint8_t* data, const size_t length);
+	void (*callback_peek_consecutive_frame) (void* context, const uint8_t* data, const size_t length, const size_t start_idx);
 
 	//	ISO-TP Protocol Configuration
 	flexisotp_protocol_config_t protocol_config;
@@ -70,6 +76,11 @@ typedef struct {
  * @param rx_len 
  */
 void flexisotp_session_init(flexisotp_session_t* session, void* tx_buffer, size_t tx_len, void* rx_buffer, size_t rx_len);
+
+/**
+ * @brief Resets session state to idle
+ */
+void flexisotp_session_idle(flexisotp_session_t* session);
 
 /**
  * @brief Processes a recieved CAN frame and associated callbacks
