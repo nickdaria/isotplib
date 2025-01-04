@@ -34,6 +34,7 @@ typedef struct {
 	//	Frame Error Callbacks
 	void (*error_invalid_frame) (void* context, const isotp_spec_frame_type_t rx_frame_type, const uint8_t* msg_data, const size_t msg_length);
 	void (*error_unexpected_frame_type) (void* context, const uint8_t* msg_data, const size_t msg_length);
+	void (*error_partner_aborted_transfer) (void* context, const uint8_t* msg_data, const size_t msg_length);
 
 	//	ISO-TP Error Callbacks
 	void (*error_transmission_too_large) (void* context, const uint8_t* data, const size_t length, const size_t requested_size);
@@ -57,7 +58,8 @@ typedef struct {
 	flexisotp_session_state_t state;			//  Current session state
 
 	//  Bidirectional parameters
-	uint16_t fc_allowed_frames_remaining;		//  Number of frames that can be sent/recieved before flow control (0 = FC needed, 0xFFFF = no FC needed)
+	uint16_t fc_allowed_frames_remaining;		//  Number of frames that can be sent/recieved before flow control (0 = FC needed, UINT16_MAX = no FC needed)
+	uint32_t fc_requested_seperation;			//   (0 = No seperation time)
 
 	//  Transmit parameters
 	size_t tx_buffer_offset;                	//  Length of data sent from the current buffer
