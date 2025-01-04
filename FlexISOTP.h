@@ -22,7 +22,7 @@ typedef struct {
 	uint8_t consecutive_index_start;		//  Index consecutive frames start at
 	uint8_t consecutive_index_end;			//  Index consecutive frames roll over at
 
-	uint32_t fc_default_seperation_time;	//  Valid uS seperation time for flow control frames (0 = no seperation, 100-900 uS or 1000-127000 uS)
+	uint32_t fc_default_separation_time;	//  Valid uS seperation time for flow control frames (0 = no seperation, 100-900 uS or 1000-127000 uS)
 	size_t fc_default_request_size;			//  Number of frames to request in a flow control if not overridden (0 = all)
 } flexisotp_protocol_config_t;
 
@@ -63,7 +63,7 @@ typedef struct {
 	uint8_t fc_idx_last_consecutive;			//	(Live) Index of last consecutive frame index sent/recieved
 	
 	uint32_t fc_requested_block_size;			//  (Config) Block size currently requested (0 = All frames)
-	uint32_t fc_requested_seperation;			//  (Config) Seperation time currently requested (0 = No seperation time)
+	uint32_t fc_requested_separation;			//  (Config) Separation time currently requested (0 = No separation time)
 
 	size_t full_transmission_length;			//  (Live) Reported length of the transmission being sent/recieved
 	size_t buffer_offset;                		//  (Live) How many bytes have been sent/recieved from the current buffer

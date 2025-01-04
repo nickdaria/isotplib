@@ -47,12 +47,12 @@ void handle_single_frame(flexisotp_session_t* session, const uint8_t* frame_data
     //  Calculate packet length
     size_t packet_len = frame_length - ISOTP_SPEC_FRAME_SINGLE_DATASTART_IDX;
 
-    //  Safety for length byte being at least length of msg_length
-    if(packet_len < session->full_transmission_length) {
-        if(session->error_invalid_frame != NULL) { session->error_invalid_frame(session, 0xFF, frame_data, frame_length); }
-        callbackCleanup(session);
-        return;
-    }
+    // //  Safety for length byte being at least length of msg_length
+    // if(packet_len < session->full_transmission_length) {
+    //     if(session->error_invalid_frame != NULL) { session->error_invalid_frame(session, 0xFF, frame_data, frame_length); }
+    //     callbackCleanup(session);
+    //     return;
+    // }
 
     //  Pointer to data
     const uint8_t* packet_start = frame_data + ISOTP_SPEC_FRAME_SINGLE_DATASTART_IDX;
@@ -217,8 +217,8 @@ void handle_flow_control_frame(flexisotp_session_t* session, const uint8_t* fram
 
     //  Read separation time
     uint32_t separation_time = 0;
-    if(frame_length > ISOTP_SPEC_FRAME_FLOWCONTROL_SEPERATION_TIME_IDX + 1) {
-        separation_time = isotp_fc_seperation_time_us(frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_SEPERATION_TIME_IDX] & ISOTP_SPEC_FRAME_FLOWCONTROL_SEPERATION_TIME_MASK);
+    if(frame_length > ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_IDX + 1) {
+        separation_time = isotp_fc_seperation_time_us(frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_IDX] & ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_MASK);
     }
 
     //  Process FC frame
@@ -244,7 +244,7 @@ void handle_flow_control_frame(flexisotp_session_t* session, const uint8_t* fram
     }
 
     //  Load requested parameters
-    session->fc_requested_seperation = separation_time;
+    session->fc_requested_separation = separation_time;
     session->fc_allowed_frames_remaining = block_size;
 }
 
@@ -455,11 +455,11 @@ uint32_t tx_transmitting(flexisotp_session_t* session, uint8_t* frame_data, size
         memcpy(frame_data + ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX, packet_start, packet_len);
 
         //  Send frame data
-        return_val = session->fc_requested_seperation;
+        return_val = session->fc_requested_separation;
     }
 
     //  Decrement allowed frames counter
-    if(session->fc_allowed_frames_remaining != UINT16_MAX) { session->fc_allowed_frames_remaining--; }
+    decrement_fc_allowed_frames(session);
 
     //  Check if done
     if(session->buffer_offset >= session->full_transmission_length) {
@@ -483,11 +483,11 @@ uint32_t tx_recieving(flexisotp_session_t* session, uint8_t* frame_data, size_t*
         //  TODO: Add ability to wait and abort?
         isotp_flow_control_flags_t fc_flag = ISOTP_SPEC_FC_FLAG_CONTINUE_TO_SEND;
 
-        //  Reset block size and request default number of frames
+        //  Reset block size and request configured number of frames
         session->fc_allowed_frames_remaining = session->fc_requested_block_size;
         
         //  Seperation time
-        uint8_t seperation_time = isotp_fc_seperation_time_byte(session->fc_requested_seperation);
+        uint8_t seperation_time = isotp_fc_seperation_time_byte(session->fc_requested_separation);
 
         //  Assemble CAN frame
         frame_data[ISOTP_SPEC_FRAME_TYPE_IDX] &= ~ISOTP_SPEC_FRAME_TYPE_MASK; // Clear the type bits
@@ -501,7 +501,7 @@ uint32_t tx_recieving(flexisotp_session_t* session, uint8_t* frame_data, size_t*
         frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_IDX] = session->fc_allowed_frames_remaining & ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_MASK;
 
         //  Set the seperation time
-        frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_SEPERATION_TIME_IDX] = seperation_time & ISOTP_SPEC_FRAME_FLOWCONTROL_SEPERATION_TIME_MASK;
+        frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_IDX] = seperation_time & ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_MASK;
 
         //  Set frame length
         *frame_length = ISOTP_SPEC_FRAME_FLOWCONTROL_HEADER_END;
@@ -541,6 +541,9 @@ uint32_t flexisotp_session_can_tx(flexisotp_session_t* session, uint8_t* frame_d
         for(size_t i = *frame_length; i < frame_size; i++) {
             frame_data[i] = session->protocol_config.padding_byte;
         }
+
+        //  Update frame length
+        *frame_length = frame_size;
     }
 
     //  CAN TX callback
@@ -564,7 +567,7 @@ void flexisotp_session_idle(flexisotp_session_t* session) {
     //  Reset session state
     session->state = ISOTP_SESSION_IDLE;
     session->fc_allowed_frames_remaining = 1;
-    session->fc_requested_seperation = session->protocol_config.fc_default_seperation_time;
+    session->fc_requested_separation = session->protocol_config.fc_default_separation_time;
     session->fc_requested_block_size = session->protocol_config.fc_default_request_size;
     session->buffer_offset = 0;
     session->full_transmission_length = 0;
@@ -583,7 +586,7 @@ void flexisotp_session_init(flexisotp_session_t* session, void* tx_buffer, size_
     session->protocol_config.consecutive_index_start = 0;
     session->protocol_config.consecutive_index_end = 15;
     session->protocol_config.fc_default_request_size = 0;   //  request all frames by default
-    session->protocol_config.fc_default_seperation_time = 0;    //  no delay by default
+    session->protocol_config.fc_default_separation_time = 0;    //  no delay by default
 
     //  Load buffers
     session->tx_buffer = tx_buffer;
