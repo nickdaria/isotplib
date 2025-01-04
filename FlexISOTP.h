@@ -22,6 +22,7 @@ typedef struct {
 	uint8_t consecutive_index_start;		//  Index consecutive frames start at
 	uint8_t consecutive_index_end;			//  Index consecutive frames roll over at
 
+	uint32_t fc_default_seperation_time;	//  Valid uS seperation time for flow control frames (0 = no seperation, 100-900 uS or 1000-127000 uS)
 	size_t fc_default_request_size;			//  Number of frames to request in a flow control if not overridden (0 = all)
 } flexisotp_protocol_config_t;
 
@@ -55,19 +56,21 @@ typedef struct {
 	size_t rx_len;
 
 	//  Current Session State
-	flexisotp_session_state_t state;			//  Current session state
+	flexisotp_session_state_t state;			//  (Live) Current session state
 
 	//  Bidirectional parameters
-	uint16_t fc_allowed_frames_remaining;		//  Number of frames that can be sent/recieved before flow control (0 = FC needed, UINT16_MAX = no FC needed)
-	uint32_t fc_requested_seperation;			//   (0 = No seperation time)
+	uint16_t fc_allowed_frames_remaining;		//  (Live) number of frames that can be sent/recieved before flow control (0 = FC needed, UINT16_MAX = no FC needed)
+	uint8_t fc_idx_last_consecutive;			//	(Live) last consecutive frame index received
+	
+	uint32_t fc_requested_block_size;			//  (Config) Block size currently requested (0 = All frames)
+	uint32_t fc_requested_seperation;			//  (Config) Seperation time currently requested (0 = No seperation time)
 
 	//  Transmit parameters
-	size_t tx_buffer_offset;                	//  Length of data sent from the current buffer
+	size_t tx_buffer_offset;                	//  (Live) Length of data sent from the current buffer
 
 	//  Receive parameters
-	size_t rx_buffer_offset;                	//  Length of data recieved from the current buffer
-	size_t rx_expected_len;						//  Reported length of the transmission being received
-	uint8_t rx_last_consecutive;				//	Last consecutive frame index received
+	size_t rx_buffer_offset;                	//  (Live) Length of data recieved from the current buffer
+	size_t rx_expected_len;						//  (Live) Reported length of the transmission being received
 } flexisotp_session_t;
 
 /**
@@ -90,18 +93,18 @@ void flexisotp_session_idle(flexisotp_session_t* session);
  * @brief Processes a recieved CAN frame and associated callbacks
  * 
  * @param session 
- * @param data 
- * @param length 
+ * @param frame_data 
+ * @param frame_length 
  */
-void flexisotp_session_can_rx(flexisotp_session_t* session, const uint8_t* data, const size_t length);
+void flexisotp_session_can_rx(flexisotp_session_t* session, const uint8_t* frame_data, const size_t frame_length);
 
 /**
- * @brief Checks if a CAN frame is queued to be sent, and loads the contents to the provided buffer if so
+ * @brief Fetches the next ISO-TP frame to transmit. Returns 0 if none, > 0 if frame (requested uS delay).
  * 
- * @param session 
- * @param data 
- * @param length 
- * @return true 
- * @return false 
+ * @param session Session to work with
+ * @param frame_data Outputted frame data
+ * @param frame_length Outputted length of frame
+ * @param frame_size Size of frame allowed
+ * @return 0 = no frame, > 0 = frame & requested delay in uS to next TX
  */
-bool flexisotp_session_can_tx(flexisotp_session_t* session, uint8_t* data, size_t* length);
+uint32_t flexisotp_session_can_tx(flexisotp_session_t* session, uint8_t* frame_data, size_t* frame_length, const size_t frame_size);

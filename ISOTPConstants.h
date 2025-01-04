@@ -19,7 +19,7 @@ typedef enum {
 //  All frames
 #define ISOTP_SPEC_FRAME_TYPE_IDX 0
 #define ISOTP_SPEC_FRAME_TYPE_MASK 0xF0
-#define ISOTP_SPEC_FRAME_TYPE_SHIFT_R 4
+#define ISOTP_SPEC_FRAME_TYPE_SHIFT 4
 
 //  Single frame
 #define ISOTP_SPEC_FRAME_SINGLE_LEN_IDX 0
@@ -51,6 +51,8 @@ typedef enum {
 
 #define ISOTP_SPEC_FRAME_FLOWCONTROL_SEPERATION_TIME_IDX 2
 #define ISOTP_SPEC_FRAME_FLOWCONTROL_SEPERATION_TIME_MASK 0xFF
+
+#define ISOTP_SPEC_FRAME_FLOWCONTROL_HEADER_END 3
 
 //  Flow control flags
 typedef enum {
