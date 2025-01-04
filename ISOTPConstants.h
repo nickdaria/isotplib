@@ -91,3 +91,18 @@ inline uint32_t isotp_fc_seperation_time_us(uint8_t req_sep_byte) {
         return 0;
     }
 }
+
+inline uint8_t isotp_fc_seperation_time_byte(uint32_t uS) {
+    if(uS == 0) {
+        return ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_SEND_WITHOUT_FC;
+    }
+    else if(uS > ISOTP_SPEC_FC_SEPERATION_TIME_MS_MIN && uS <= ISOTP_SPEC_FC_SEPERATION_TIME_MS_MAX) {
+        return uS / ISOTP_SPEC_FC_SEPERATION_TIME_MS_SCALAR;
+    }
+    else if(uS >= ISOTP_SPEC_FC_SEPERATION_TIME_uS_MIN && uS <= ISOTP_SPEC_FC_SEPERATION_TIME_uS_MAX) {
+        return (uS / ISOTP_SPEC_FC_SEPERATION_TIME_uS_SCALAR) + ISOTP_SPEC_FC_SEPERATION_TIME_uS_MIN - 1;
+    }
+    else {
+        return 0;
+    }
+}
