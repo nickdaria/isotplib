@@ -1,0 +1,26 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug FlexISOTP Console Playground",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/console-playground/console-playground.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": true,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "miDebuggerPath": "gdb",
+            "preLaunchTask": "Build FlexISOTP Console Playground"
+        }
+    ]
+}
