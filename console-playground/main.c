@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdlib.h>
 #include "../FlexISOTP.h"
 
 //  FlexISOTP session
@@ -14,6 +15,7 @@ uint8_t can_tx_buf[8];
 void cmd_enter();
 void cmd_buf();
 void cmd_hexdata(const uint8_t* buf, const size_t len);
+void cmd_sendTest();
 
 //  Gets line from user (not including newline). Can be empty (enter pressed).
 size_t user_rx_cmd(uint8_t* buffer, const size_t buffer_size) {
@@ -40,6 +42,12 @@ void usr_process_cmd(const uint8_t* buffer, const size_t length) {
     // 'b' command
     if (length == 1 && buffer[0] == 'b') {
         cmd_buf();
+        return;
+    }
+
+    // 'c' command
+    if (length == 1 && buffer[0] == 'c') {
+        cmd_sendTest(); // Pass 0 as a placeholder
         return;
     }
 
@@ -95,6 +103,38 @@ void cmd_hexdata(const uint8_t* buf, const size_t len) {
     flexisotp_session_can_rx(&session, buf, len);
 }
 
+void sendTestData(const size_t len) {
+    uint8_t test_buf[len];
+
+    for(size_t i = 1; i < len; i++) {
+        test_buf[i] = i;
+    }
+
+    flexisotp_session_send(&session, test_buf, len);
+}
+
+//  Command for sending test data
+void cmd_sendTest() {
+    printf("Enter decimal size for test: ");
+    fflush(stdout);
+
+    char input[16];
+    size_t size = 0;
+
+    if (fgets(input, sizeof(input), stdin)) {
+        size = strtoul(input, NULL, 10);
+
+        // Validate input size
+        if (size > 0 && size <= sizeof(tx_buffer)) {
+            sendTestData(size);
+        } else {
+            printf("[ERROR] Size must be between 1 and %lu.\n", sizeof(tx_buffer));
+        }
+    } else {
+        printf("[ERROR] Failed to read input.\n");
+    }
+}
+
 //  Main loop
 void playground() {
     // Get user input
@@ -130,6 +170,8 @@ void cb_error_invalid_frame(flexisotp_session_t *context, const isotp_spec_frame
         printf("%02X ", msg_data[i]);
     }
     printf("\n");
+
+    flexisotp_session_idle(context);
 }
 
 void cb_error_unexpected_frame_type(flexisotp_session_t *context, const uint8_t *msg_data, const size_t msg_length) {
@@ -138,6 +180,8 @@ void cb_error_unexpected_frame_type(flexisotp_session_t *context, const uint8_t 
         printf("%02X ", msg_data[i]);
     }
     printf("\n");
+
+    flexisotp_session_idle(context);
 }
 
 void cb_error_partner_aborted_transfer(flexisotp_session_t *context, const uint8_t *msg_data, const size_t msg_length) {
@@ -146,6 +190,8 @@ void cb_error_partner_aborted_transfer(flexisotp_session_t *context, const uint8
         printf("%02X ", msg_data[i]);
     }
     printf("\n");
+    
+    flexisotp_session_idle(context);
 }
 
 void cb_error_transmission_too_large(flexisotp_session_t *context, const uint8_t *data, const size_t length, const size_t requested_size) {
@@ -154,6 +200,8 @@ void cb_error_transmission_too_large(flexisotp_session_t *context, const uint8_t
         printf("%02X ", data[i]);
     }
     printf("\n");
+    
+    flexisotp_session_idle(context);
 }
 
 void cb_error_consecutive_out_of_order(flexisotp_session_t *context, const uint8_t *data, const size_t length, const uint8_t expected_index, const uint8_t received_index) {
@@ -162,6 +210,8 @@ void cb_error_consecutive_out_of_order(flexisotp_session_t *context, const uint8
         printf("%02X ", data[i]);
     }
     printf("\n");
+    
+    flexisotp_session_idle(context);
 }
 
 void cb_transmission_rx(flexisotp_session_t *context) {

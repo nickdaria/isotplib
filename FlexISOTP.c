@@ -204,13 +204,13 @@ void handle_flow_control_frame(flexisotp_session_t* session, const uint8_t* fram
 
     //  Read pblock size
     uint8_t block_size = ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_SEND_WITHOUT_FC;    //  Default to no FC
-    if(frame_length < ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_IDX + 1) {
+    if(frame_length >= ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_IDX + 1) {
         block_size = frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_IDX] & ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_MASK;
     }
 
     //  Read separation time
     uint32_t separation_time = 0;
-    if(frame_length > ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_IDX + 1) {
+    if(frame_length >= ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_IDX + 1) {
         separation_time = isotp_fc_seperation_time_us(frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_IDX] & ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_MASK);
     }
 
@@ -378,12 +378,6 @@ size_t tx_transmitting(flexisotp_session_t* session, uint8_t* frame_data, const 
         return 0;
     }
 
-    //  Check if we need to enter flow control wait mode
-    if(session->fc_allowed_frames_remaining == 0) {
-        session->state = ISOTP_SESSION_TRANSMITTING_AWAITING_FC;
-        return 0;
-    }
-
     //  Return
     if(requested_separation_uS != NULL) { *requested_separation_uS = 0; }
     size_t ret_frame_size = 0;
@@ -429,6 +423,9 @@ size_t tx_transmitting(flexisotp_session_t* session, uint8_t* frame_data, const 
             //  Copy data
             memcpy(frame_data + ISOTP_SPEC_FRAME_FIRST_DATASTART_IDX, packet_start, packet_len);
 
+            //  Advance buffer
+            session->buffer_offset += packet_len;
+
             //  Send frame data
             ret_frame_size = packet_len + ISOTP_SPEC_FRAME_FIRST_DATASTART_IDX;
         }
@@ -444,10 +441,25 @@ size_t tx_transmitting(flexisotp_session_t* session, uint8_t* frame_data, const 
 
         //  Setup parameters
         const uint8_t* packet_start = session->tx_buffer + session->buffer_offset;
-        const size_t packet_len = frame_size - ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX;
+        const size_t bytes_remaining = session->full_transmission_length - session->buffer_offset;
+
+        //  Calculate packet length
+        size_t packet_len = frame_size - ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX;
+        if(packet_len > bytes_remaining) {
+            packet_len = bytes_remaining;
+        }
 
         //  Copy data
         memcpy(frame_data + ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX, packet_start, packet_len);
+
+        //  Advance buffer
+        session->buffer_offset += packet_len;
+
+        //  Increment expected index
+        session->fc_idx_track_consecutive++;
+        if(session->fc_idx_track_consecutive > session->protocol_config.consecutive_index_end) {
+            session->fc_idx_track_consecutive = session->protocol_config.consecutive_index_start;
+        }
 
         //  Desired separation time
         if(requested_separation_uS != NULL) { *requested_separation_uS = session->fc_requested_separation_uS; }
@@ -455,9 +467,15 @@ size_t tx_transmitting(flexisotp_session_t* session, uint8_t* frame_data, const 
         //  Send frame data
         ret_frame_size = packet_len + ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX;
     }
-
+    
     //  Decrement allowed frames counter
     decrement_fc_allowed_frames(session);
+
+    //  Check if we need to enter flow control wait mode
+    if(session->fc_allowed_frames_remaining == 0) {
+        session->state = ISOTP_SESSION_TRANSMITTING_AWAITING_FC;
+        //return 0;
+    }
 
     //  Check if done
     if(session->buffer_offset >= session->full_transmission_length) {
@@ -578,12 +596,35 @@ void flexisotp_session_idle(flexisotp_session_t* session) {
 
     //  Reset session state
     session->state = ISOTP_SESSION_IDLE;
-    session->fc_allowed_frames_remaining = 1;
+    session->fc_allowed_frames_remaining = 0;
     session->fc_requested_separation_uS = session->protocol_config.fc_default_separation_time;
     session->fc_requested_block_size = session->protocol_config.fc_default_request_size;
     session->buffer_offset = 0;
     session->full_transmission_length = 0;
     session->fc_idx_track_consecutive = 0;
+}
+
+size_t flexisotp_session_send(flexisotp_session_t* session, const uint8_t* data, const size_t data_length) {
+    //  Safety
+    if(session == NULL || data == NULL || data_length == 0) {
+        return 0;
+    }
+
+    //  Copy data into buffer
+    size_t copy_len = data_length;
+    if(copy_len > session->tx_len) {
+        copy_len = session->tx_len;
+    }
+    memcpy(session->tx_buffer, data, copy_len);
+
+    //  Set transmit length
+    session->full_transmission_length = copy_len;
+
+    //  Update session state
+    session->state = ISOTP_SESSION_TRANSMITTING;
+
+    //  Return
+    return copy_len;
 }
 
 void flexisotp_session_init(flexisotp_session_t* session, void* tx_buffer, size_t tx_len, void* rx_buffer, size_t rx_len) {

@@ -86,6 +86,16 @@ void flexisotp_session_init(flexisotp_session_t* session, void* tx_buffer, size_
 void flexisotp_session_idle(flexisotp_session_t* session);
 
 /**
+ * @brief Copies data to session tx buffer and starts transmission
+ * 
+ * @param session 
+ * @param data 
+ * @param data_length 
+ * @return size_t 
+ */
+size_t flexisotp_session_send(flexisotp_session_t* session, const uint8_t* data, const size_t data_length);
+
+/**
  * @brief Processes a recieved CAN frame and associated callbacks
  * 
  * @param session 
