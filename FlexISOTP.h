@@ -59,11 +59,11 @@ typedef struct {
 	flexisotp_session_state_t state;			//  (Live) Current session state
 
 	//  Bidirectional parameters
-	uint16_t fc_allowed_frames_remaining;		//  (Live) Counter of frames that can be sent/recieved before flow control reqd (0 = FC needed, UINT16_MAX = no FC needed)
+	uint16_t fc_allowed_frames_remaining;		//  (Live) Counter of frames that can be sent/recieved before flow control reqd (0 = FC needed, UINT16_MAX = FC not required)
 	uint8_t fc_idx_track_consecutive;			//	(Live) Index of last consecutive frame index sent/recieved
 	
-	uint32_t fc_requested_block_size;			//  (Config) Block size currently requested (0 = All frames)
-	uint32_t fc_requested_separation;			//  (Config) Separation time currently requested (0 = No separation time)
+	uint8_t fc_requested_block_size;			//  (Config) Block size currently requested (0 = All frames)
+	uint32_t fc_requested_separation_uS;		//  (Config) Separation time currently requested (0 = No separation time)
 
 	size_t full_transmission_length;			//  (Live) Reported length of the transmission being sent/recieved
 	size_t buffer_offset;                		//  (Live) How many bytes have been sent/recieved from the current buffer

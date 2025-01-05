@@ -234,9 +234,14 @@ void handle_flow_control_frame(flexisotp_session_t* session, const uint8_t* fram
             return;
     }
 
-    //  Load requested parameters
-    session->fc_requested_separation = separation_time;
+    //  Load seperation time
+    session->fc_requested_separation_uS = separation_time;
+
+    //  Load block size
     session->fc_allowed_frames_remaining = block_size;
+    if(session->fc_allowed_frames_remaining == 0) {
+        session->fc_allowed_frames_remaining = UINT16_MAX;
+    }
 }
 
 /*
@@ -445,7 +450,7 @@ size_t tx_transmitting(flexisotp_session_t* session, uint8_t* frame_data, const 
         memcpy(frame_data + ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX, packet_start, packet_len);
 
         //  Desired separation time
-        if(requested_separation_uS != NULL) { *requested_separation_uS = session->fc_requested_separation; }
+        if(requested_separation_uS != NULL) { *requested_separation_uS = session->fc_requested_separation_uS; }
 
         //  Send frame data
         ret_frame_size = packet_len + ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX;
@@ -482,9 +487,12 @@ size_t tx_recieving(flexisotp_session_t* session, uint8_t* frame_data, const siz
 
         //  Reset block size and request configured number of frames
         session->fc_allowed_frames_remaining = session->fc_requested_block_size;
+        if(session->fc_allowed_frames_remaining == 0) {
+            session->fc_allowed_frames_remaining = UINT16_MAX;
+        }
         
         //  Seperation time
-        uint8_t seperation_time = isotp_fc_seperation_time_byte(session->fc_requested_separation);
+        uint8_t seperation_time = isotp_fc_seperation_time_byte(session->fc_requested_separation_uS);
 
         //  Assemble CAN frame
         frame_data[ISOTP_SPEC_FRAME_TYPE_IDX] &= ~ISOTP_SPEC_FRAME_TYPE_MASK; // Clear the type bits
@@ -495,7 +503,8 @@ size_t tx_recieving(flexisotp_session_t* session, uint8_t* frame_data, const siz
         frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_FC_FLAGS_IDX] |= fc_flag & ISOTP_SPEC_FRAME_FLOWCONTROL_FC_FLAGS_MASK;
 
         // Set the block size
-        frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_IDX] = session->fc_allowed_frames_remaining & ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_MASK;
+        uint8_t block_size_send = session->fc_allowed_frames_remaining == UINT16_MAX ? ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_SEND_WITHOUT_FC : session->fc_allowed_frames_remaining;
+        frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_IDX] = block_size_send & ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_MASK;
 
         //  Set the seperation time
         frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_IDX] = seperation_time & ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_MASK;
@@ -505,6 +514,9 @@ size_t tx_recieving(flexisotp_session_t* session, uint8_t* frame_data, const siz
 
         //  Reset flow control counter
         session->fc_allowed_frames_remaining = session->protocol_config.fc_default_request_size;
+        if(session->fc_allowed_frames_remaining == 0) {
+            session->fc_allowed_frames_remaining = UINT16_MAX;
+        }
     }
 
     //  Return
@@ -547,7 +559,7 @@ size_t flexisotp_session_can_tx(flexisotp_session_t* session, uint8_t* frame_dat
     }
 
     //  CAN TX callback
-    if(session->callback_can_tx != NULL) { session->callback_can_tx(session, frame_data, ret_frame_length); }
+    if(session->callback_can_tx != NULL && ret_frame_length > 0) { session->callback_can_tx(session, frame_data, ret_frame_length); }
 
     //  No action taken
     return ret_frame_length;
@@ -567,7 +579,7 @@ void flexisotp_session_idle(flexisotp_session_t* session) {
     //  Reset session state
     session->state = ISOTP_SESSION_IDLE;
     session->fc_allowed_frames_remaining = 1;
-    session->fc_requested_separation = session->protocol_config.fc_default_separation_time;
+    session->fc_requested_separation_uS = session->protocol_config.fc_default_separation_time;
     session->fc_requested_block_size = session->protocol_config.fc_default_request_size;
     session->buffer_offset = 0;
     session->full_transmission_length = 0;
