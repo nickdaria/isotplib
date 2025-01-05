@@ -64,9 +64,12 @@ void handle_single_frame(flexisotp_session_t* session, const uint8_t* frame_data
     session->buffer_offset += session->full_transmission_length;
     session->state = ISOTP_SESSION_RECEIVED;
 
-    //  Callback
+    //  Peek
     if(session->callback_peek_first_frame != NULL) { session->callback_peek_first_frame(session, packet_start, session->full_transmission_length); }
-    if(session->callback_transmission_rx != NULL) { session->callback_transmission_rx(session);}
+    
+    //  Callback
+    if(session->callback_transmission_rx != NULL) { session->callback_transmission_rx(session); }
+    //if(session->state == ISOTP_SESSION_RECEIVED) { flexisotp_session_idle(session); }
 }
 
 void handle_first_frame(flexisotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
@@ -180,10 +183,12 @@ void handle_consecutive_frame(flexisotp_session_t* session, const uint8_t* frame
 
     // Check if transmission is complete
     if (session->buffer_offset >= session->full_transmission_length) {
+        //  Update state
         session->state = ISOTP_SESSION_RECEIVED;
-        if (session->callback_transmission_rx != NULL) { 
-            session->callback_transmission_rx(session); 
-        }
+
+        //  Callback
+        if(session->callback_transmission_rx != NULL) { session->callback_transmission_rx(session); }
+        //if(session->state == ISOTP_SESSION_RECEIVED) { flexisotp_session_idle(session); }
     }
 }
 
