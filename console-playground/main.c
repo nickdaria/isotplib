@@ -13,7 +13,7 @@ uint8_t can_tx_buf[8];
 
 //  Prototypes for command functions
 void cmd_enter();
-void cmd_buf();
+void cmd_help();
 void cmd_hexdata(const uint8_t* buf, const size_t len);
 void cmd_sendTest();
 
@@ -39,9 +39,9 @@ void usr_process_cmd(const uint8_t* buffer, const size_t length) {
         return;
     }
 
-    // 'b' command
-    if (length == 1 && buffer[0] == 'b') {
-        cmd_buf();
+    // 'h' command
+    if (length == 1 && buffer[0] == 'h') {
+        cmd_help();
         return;
     }
 
@@ -86,9 +86,14 @@ void cmd_enter() {
     printf("\n");
 }
 
-//  Command 'b': Example function
-void cmd_buf() {
-    printf("[bufdump]\n");
+//  Command 'h': Help
+void cmd_help() {
+    printf("[Simple desktop playground for testing FlexISOTP]\n");
+    printf("(this tool is made for use with the vscode debugger)\n");
+    printf("\th - help\n");
+    printf("\tc - start transmission\n");
+    printf("\t[enter] - request CAN TX frame\n");
+    printf("\t> XXXXXX Enter hex formatted data (no spaces) at the prompt to emulate CAN RX frames\n");
 }
 
 //  Command for hex data
@@ -257,7 +262,7 @@ int main() {
     session.callback_peek_first_frame = (void (*)(void *, const uint8_t *, const size_t))cb_peek_first_frame;
     session.callback_peek_consecutive_frame = (void (*)(void *, const uint8_t *, const size_t, const size_t))cb_peek_consecutive_frame;
 
-
+    cmd_help();
     while (1) {
         printf("> "); // Prompt user
         fflush(stdout); // Ensure prompt is visible
