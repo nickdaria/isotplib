@@ -216,7 +216,7 @@ void handle_flow_control_frame(flexisotp_session_t* session, const uint8_t* fram
     //  Read separation time
     uint32_t separation_time = 0;
     if(frame_length >= ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_IDX + 1) {
-        separation_time = isotp_fc_seperation_time_us(frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_IDX] & ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_MASK);
+        separation_time = isotp_fc_separation_time_us(frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_IDX] & ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_MASK);
     }
 
     //  Process FC frame
@@ -515,7 +515,7 @@ size_t tx_recieving(flexisotp_session_t* session, uint8_t* frame_data, const siz
         }
         
         //  Seperation time
-        uint8_t seperation_time = isotp_fc_seperation_time_byte(session->fc_requested_separation_uS);
+        uint8_t seperation_time = isotp_fc_separation_time_byte(session->fc_requested_separation_uS);
 
         //  Assemble CAN frame
         frame_data[ISOTP_SPEC_FRAME_TYPE_IDX] &= ~ISOTP_SPEC_FRAME_TYPE_MASK; // Clear the type bits

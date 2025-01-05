@@ -1,7 +1,7 @@
 #include "ISOTPConversions.h"
 #include "ISOTPConstants.h"
 
-uint32_t isotp_fc_seperation_time_us(uint8_t req_sep_byte) {
+uint32_t isotp_fc_separation_time_us(uint8_t req_sep_byte) {
     if (req_sep_byte > ISOTP_SPEC_FC_SEPERATION_TIME_MS_MIN && req_sep_byte <= ISOTP_SPEC_FC_SEPERATION_TIME_MS_MAX) {
         // Millisecond delay
         return req_sep_byte * ISOTP_SPEC_FC_SEPERATION_TIME_MS_SCALAR;
@@ -17,7 +17,7 @@ uint32_t isotp_fc_seperation_time_us(uint8_t req_sep_byte) {
     }
 }
 
-inline uint8_t isotp_fc_seperation_time_byte(uint32_t uS) {
+uint8_t isotp_fc_separation_time_byte(uint32_t uS) {
     if(uS == 0) {
         return ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_SEND_WITHOUT_FC;
     }
@@ -28,6 +28,7 @@ inline uint8_t isotp_fc_seperation_time_byte(uint32_t uS) {
         return (uS / ISOTP_SPEC_FC_SEPERATION_TIME_uS_SCALAR) + ISOTP_SPEC_FC_SEPERATION_TIME_uS_MIN - 1;
     }
     else {
-        return 0;
+        //  Invalid input
+        return ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_SEND_WITHOUT_FC;
     }
 }
