@@ -610,6 +610,9 @@ size_t flexisotp_session_send(flexisotp_session_t* session, const uint8_t* data,
         return 0;
     }
 
+    //  Reset session state
+    flexisotp_session_idle(session);
+
     //  Copy data into buffer
     size_t copy_len = data_length;
     if(copy_len > session->tx_len) {
