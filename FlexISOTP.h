@@ -60,7 +60,7 @@ typedef struct {
 
 	//  Bidirectional parameters
 	uint16_t fc_allowed_frames_remaining;		//  (Live) Counter of frames that can be sent/recieved before flow control reqd (0 = FC needed, UINT16_MAX = no FC needed)
-	uint8_t fc_idx_last_consecutive;			//	(Live) Index of last consecutive frame index sent/recieved
+	uint8_t fc_idx_track_consecutive;			//	(Live) Index of last consecutive frame index sent/recieved
 	
 	uint32_t fc_requested_block_size;			//  (Config) Block size currently requested (0 = All frames)
 	uint32_t fc_requested_separation;			//  (Config) Separation time currently requested (0 = No separation time)
@@ -101,6 +101,5 @@ void flexisotp_session_can_rx(flexisotp_session_t* session, const uint8_t* frame
  * @param frame_data Outputted frame data
  * @param frame_length Outputted length of frame
  * @param frame_size Size of frame allowed
- * @return 0 = no frame, > 0 = frame & requested delay in uS to next TX
  */
-uint32_t flexisotp_session_can_tx(flexisotp_session_t* session, uint8_t* frame_data, size_t* frame_length, const size_t frame_size);
+size_t flexisotp_session_can_tx(flexisotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS);

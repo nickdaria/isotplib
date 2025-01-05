@@ -6,6 +6,7 @@
             "type": "shell",
             "command": "gcc",
             "args": [
+                "-g", // Include debugging symbols
                 "-o",
                 "${workspaceFolder}/console-playground/console-playground.exe",
                 "${workspaceFolder}/console-playground/main.c",

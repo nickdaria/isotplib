@@ -3,12 +3,6 @@
 #include <string.h>
 #include "ISOTPConversions.h"
 
-//  Helper to reset the session if no send was requested in the callback
-void callbackCleanup(flexisotp_session_t* session) {
-    if(session->state != ISOTP_SESSION_TRANSMITTING || session->state != ISOTP_SESSION_TRANSMITTING_AWAITING_FC) {
-        flexisotp_session_idle(session);
-    }
-}
 
 //  Helper to decrement fc allowed frames
 void decrement_fc_allowed_frames(flexisotp_session_t* session) {
@@ -39,7 +33,6 @@ void handle_single_frame(flexisotp_session_t* session, const uint8_t* frame_data
     //  Safety: ensure header exists (it should)
     if(frame_length < ISOTP_SPEC_FRAME_SINGLE_DATASTART_IDX) {
         if(session->error_invalid_frame != NULL) { session->error_invalid_frame(session, 0xFF, frame_data, frame_length); }
-        callbackCleanup(session);
         return;
     }
 
@@ -49,12 +42,11 @@ void handle_single_frame(flexisotp_session_t* session, const uint8_t* frame_data
     //  Calculate packet length
     size_t packet_len = frame_length - ISOTP_SPEC_FRAME_SINGLE_DATASTART_IDX;
 
-    // //  Safety for length byte being at least length of msg_length
-    // if(packet_len < session->full_transmission_length) {
-    //     if(session->error_invalid_frame != NULL) { session->error_invalid_frame(session, 0xFF, frame_data, frame_length); }
-    //     callbackCleanup(session);
-    //     return;
-    // }
+    //  Safety for length byte being at least length of msg_length
+    if(packet_len < session->full_transmission_length) {
+        if(session->error_invalid_frame != NULL) { session->error_invalid_frame(session, 0xFF, frame_data, frame_length); }
+        return;
+    }
 
     //  Pointer to data
     const uint8_t* packet_start = frame_data + ISOTP_SPEC_FRAME_SINGLE_DATASTART_IDX;
@@ -62,7 +54,6 @@ void handle_single_frame(flexisotp_session_t* session, const uint8_t* frame_data
     //  Safety for buffer being large enough
     if(session->full_transmission_length > session->rx_len) {
         if(session->error_transmission_too_large != NULL) { session->error_transmission_too_large(session, packet_start, packet_len, session->full_transmission_length); }
-        callbackCleanup(session);
         return;
     }
 
@@ -76,9 +67,6 @@ void handle_single_frame(flexisotp_session_t* session, const uint8_t* frame_data
     //  Callback
     if(session->callback_peek_first_frame != NULL) { session->callback_peek_first_frame(session, packet_start, session->full_transmission_length); }
     if(session->callback_transmission_rx != NULL) { session->callback_transmission_rx(session);}
-
-    //  Reset session state if not acted upon
-    callbackCleanup(session);
 }
 
 void handle_first_frame(flexisotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
@@ -96,7 +84,6 @@ void handle_first_frame(flexisotp_session_t* session, const uint8_t* frame_data,
     //  Safety: ensure header exists
     if(frame_length < ISOTP_SPEC_FRAME_FIRST_DATASTART_IDX) {
         if(session->error_invalid_frame != NULL) { session->error_invalid_frame(session, 0xFF, frame_data, frame_length); }
-        callbackCleanup(session);
         return;
     }
 
@@ -114,7 +101,6 @@ void handle_first_frame(flexisotp_session_t* session, const uint8_t* frame_data,
     //  Safety for buffer being large enough
     if(session->full_transmission_length > session->rx_len) {
         if(session->error_transmission_too_large != NULL) { session->error_transmission_too_large(session, packet_start, packet_len, session->full_transmission_length); }
-        callbackCleanup(session);
         return;
     }
 
@@ -127,7 +113,6 @@ void handle_first_frame(flexisotp_session_t* session, const uint8_t* frame_data,
 
     //  Callback
     if(session->callback_peek_first_frame != NULL) { session->callback_peek_first_frame(session, packet_start, packet_len); }
-    callbackCleanup(session);
 }
 
 void handle_consecutive_frame(flexisotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
@@ -139,35 +124,44 @@ void handle_consecutive_frame(flexisotp_session_t* session, const uint8_t* frame
     //  Safety: session state
     if(session->state != ISOTP_SESSION_RECEIVING) {
         if(session->error_unexpected_frame_type != NULL) { session->error_unexpected_frame_type(session, frame_data, frame_length); }
-        callbackCleanup(session);
         return;
     }
 
     //  Safety: ensure header exists
     if(frame_length < ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX) {
         if(session->error_invalid_frame != NULL) { session->error_invalid_frame(session, 0xFF, frame_data, frame_length); }
-        callbackCleanup(session);
         return;
     }
 
     //  Get index
     uint8_t index = frame_data[ISOTP_SPEC_FRAME_CONSECUTIVE_INDEX_IDX] & ISOTP_SPEC_FRAME_CONSECUTIVE_INDEX_MASK;
     
-    //  Calculate expected index
-    uint8_t expected_index = session->fc_idx_last_consecutive + 1;
-    if(expected_index > session->protocol_config.consecutive_index_end) {
-        expected_index = session->protocol_config.consecutive_index_start;
+    // Ensure fc_idx_track_consecutive starts at the correct value
+    if (session->buffer_offset == 0) {
+        session->fc_idx_track_consecutive = session->protocol_config.consecutive_index_start;
     }
 
-    //  Get packet parameters
+    // Calculate expected index
+    uint8_t expected_index = session->fc_idx_track_consecutive;
+
+    //  Increment expected index
+    session->fc_idx_track_consecutive++;
+
+    //  Wrap around
+    if (session->fc_idx_track_consecutive > session->protocol_config.consecutive_index_end) {
+        session->fc_idx_track_consecutive = session->protocol_config.consecutive_index_start;
+    }
+
+    // Get packet parameters
     size_t packet_len = frame_length - ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX;
     const uint8_t* packet_start = frame_data + ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX;
     size_t bytes_remaining = session->full_transmission_length - session->buffer_offset;
 
-    //  Safety: verify index
-    if(index != expected_index) {
-        if(session->error_consecutive_out_of_order != NULL) { session->error_consecutive_out_of_order(session, packet_start, packet_len, expected_index, index); }
-        callbackCleanup(session);
+    // Safety: Verify index
+    if (index != expected_index) {
+        if (session->error_consecutive_out_of_order != NULL) {
+            session->error_consecutive_out_of_order(session, packet_start, packet_len, expected_index, index);
+        }
         return;
     }
 
@@ -182,17 +176,15 @@ void handle_consecutive_frame(flexisotp_session_t* session, const uint8_t* frame
 
     //  Peek callback
     if(session->callback_peek_consecutive_frame != NULL) { session->callback_peek_consecutive_frame(session, packet_start, packet_len, session->buffer_offset - packet_len); }
-    callbackCleanup(session);
 
     //  Check if transmission is complete
     if(session->buffer_offset >= session->full_transmission_length) {
         session->state = ISOTP_SESSION_RECEIVED;
         if(session->callback_transmission_rx != NULL) { session->callback_transmission_rx(session); }
-        callbackCleanup(session);
     }
 
     //  Save last index
-    session->fc_idx_last_consecutive = index;
+    session->fc_idx_track_consecutive = index;
 }
 
 void handle_flow_control_frame(flexisotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
@@ -204,7 +196,6 @@ void handle_flow_control_frame(flexisotp_session_t* session, const uint8_t* fram
     //  Safety: session state
     if(session->state != ISOTP_SESSION_TRANSMITTING_AWAITING_FC && session->state != ISOTP_SESSION_TRANSMITTING) {
         if(session->error_unexpected_frame_type != NULL) { session->error_unexpected_frame_type(session, frame_data, frame_length); }
-        callbackCleanup(session);
         return;
     }
 
@@ -236,12 +227,10 @@ void handle_flow_control_frame(flexisotp_session_t* session, const uint8_t* fram
         case ISOTP_SPEC_FC_FLAG_OVERFLOW_ABORT:
             //  Abort transmission
             if(session->error_partner_aborted_transfer != NULL) { session->error_partner_aborted_transfer(session, frame_data, frame_length); }
-            callbackCleanup(session);
             break;
         default:
             //  Invalid FC flags
             if(session->error_invalid_frame != NULL) { session->error_invalid_frame(session, 0xFF, frame_data, frame_length); }
-            callbackCleanup(session);
             return;
     }
 
@@ -312,12 +301,10 @@ void rx_recieving(const isotp_spec_frame_type_t frame_type, flexisotp_session_t*
     switch(frame_type) {
         case ISOTP_SPEC_FRAME_SINGLE:
             //  Single frame received, abandon current transmission to satisfy new request
-            flexisotp_session_idle(session);
             handle_single_frame(session, frame_data, frame_length);
             break;
         case ISOTP_SPEC_FRAME_FIRST:
             //  First frame received, abandon current transmission to satisfy new request
-            flexisotp_session_idle(session);
             handle_first_frame(session, frame_data, frame_length);
             break;
         case ISOTP_SPEC_FRAME_CONSECUTIVE:
@@ -380,7 +367,7 @@ void flexisotp_session_can_rx(flexisotp_session_t* session, const uint8_t* data,
     CAN Transmission
 
 */
-uint32_t tx_transmitting(flexisotp_session_t* session, uint8_t* frame_data, size_t* frame_length, const size_t frame_size) {
+size_t tx_transmitting(flexisotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS) {
     //  Verify we are transmitting
     if(session->state != ISOTP_SESSION_TRANSMITTING) {
         return 0;
@@ -393,7 +380,8 @@ uint32_t tx_transmitting(flexisotp_session_t* session, uint8_t* frame_data, size
     }
 
     //  Return
-    uint32_t return_val = 0;
+    if(requested_separation_uS != NULL) { *requested_separation_uS = 0; }
+    size_t ret_frame_size = 0;
 
     //  First frame?
     if(session->buffer_offset == 0) {
@@ -415,7 +403,7 @@ uint32_t tx_transmitting(flexisotp_session_t* session, uint8_t* frame_data, size
             memcpy(frame_data + ISOTP_SPEC_FRAME_SINGLE_DATASTART_IDX, packet_start, packet_len);
 
             //  Send frame data
-            return_val = 1;
+            ret_frame_size = packet_len + ISOTP_SPEC_FRAME_SINGLE_DATASTART_IDX;
         }
         else {
             //  First frame
@@ -437,7 +425,7 @@ uint32_t tx_transmitting(flexisotp_session_t* session, uint8_t* frame_data, size
             memcpy(frame_data + ISOTP_SPEC_FRAME_FIRST_DATASTART_IDX, packet_start, packet_len);
 
             //  Send frame data
-            return_val = 1;
+            ret_frame_size = packet_len + ISOTP_SPEC_FRAME_FIRST_DATASTART_IDX;
         }
     }
     else {
@@ -447,7 +435,7 @@ uint32_t tx_transmitting(flexisotp_session_t* session, uint8_t* frame_data, size
 
         //  Set the index
         frame_data[ISOTP_SPEC_FRAME_CONSECUTIVE_INDEX_IDX] &= ~ISOTP_SPEC_FRAME_CONSECUTIVE_INDEX_MASK; // Clear the index bits
-        frame_data[ISOTP_SPEC_FRAME_CONSECUTIVE_INDEX_IDX] |= session->fc_idx_last_consecutive & ISOTP_SPEC_FRAME_CONSECUTIVE_INDEX_MASK;
+        frame_data[ISOTP_SPEC_FRAME_CONSECUTIVE_INDEX_IDX] |= session->fc_idx_track_consecutive & ISOTP_SPEC_FRAME_CONSECUTIVE_INDEX_MASK;
 
         //  Setup parameters
         const uint8_t* packet_start = session->tx_buffer + session->buffer_offset;
@@ -456,8 +444,11 @@ uint32_t tx_transmitting(flexisotp_session_t* session, uint8_t* frame_data, size
         //  Copy data
         memcpy(frame_data + ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX, packet_start, packet_len);
 
+        //  Desired separation time
+        if(requested_separation_uS != NULL) { *requested_separation_uS = session->fc_requested_separation; }
+
         //  Send frame data
-        return_val = session->fc_requested_separation;
+        ret_frame_size = packet_len + ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX;
     }
 
     //  Decrement allowed frames counter
@@ -470,14 +461,18 @@ uint32_t tx_transmitting(flexisotp_session_t* session, uint8_t* frame_data, size
     }
 
     //  Return
-    return return_val;
+    return ret_frame_size;
 }
 
-uint32_t tx_recieving(flexisotp_session_t* session, uint8_t* frame_data, size_t* frame_length, const size_t frame_size) {
+size_t tx_recieving(flexisotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS) {
     //  Verify we are recieving data
     if(session->state != ISOTP_SESSION_RECEIVING) {
         return 0;
     }
+
+    //  Return value
+    if(requested_separation_uS != NULL) { *requested_separation_uS = 0; }
+    size_t return_val = 0;
 
     //  When recieving, we just need to check if a flow control frame is needed
     if(session->fc_allowed_frames_remaining == 0) {
@@ -506,53 +501,56 @@ uint32_t tx_recieving(flexisotp_session_t* session, uint8_t* frame_data, size_t*
         frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_IDX] = seperation_time & ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_MASK;
 
         //  Set frame length
-        *frame_length = ISOTP_SPEC_FRAME_FLOWCONTROL_HEADER_END;
+        return_val = ISOTP_SPEC_FRAME_FLOWCONTROL_HEADER_END;
 
-        //  Return that we are transmitting
-        return 1;
+        //  Reset flow control counter
+        session->fc_allowed_frames_remaining = session->protocol_config.fc_default_request_size;
     }
 
-    //  Nothing to send
-    return 0;
+    //  Return
+    return return_val;
 }
 
-uint32_t flexisotp_session_can_tx(flexisotp_session_t* session, uint8_t* frame_data, size_t* frame_length, const size_t frame_size) {
+size_t flexisotp_session_can_tx(flexisotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS) {
     //  Safety
-    if(session == NULL || frame_data == NULL || frame_length == 0) {
-        return false;
+    if(session == NULL || frame_data == NULL) {
+        return 0;
     }
 
     //  Determine action based on session state
-    uint32_t return_val = 0;
+    uint32_t ret_frame_length = 0;
     switch(session->state) {
         case ISOTP_SESSION_IDLE:
         case ISOTP_SESSION_RECEIVED:
         case ISOTP_SESSION_TRANSMITTING_AWAITING_FC:
             //  No need to transmit
-            return_val = 0;
+            ret_frame_length = 0;
+            break;
         case ISOTP_SESSION_TRANSMITTING:
             //  Transmitting
-            return_val = tx_transmitting(session, frame_data, frame_length, frame_size);
+            ret_frame_length = tx_transmitting(session, frame_data, frame_size, requested_separation_uS);
+            break;
         case ISOTP_SESSION_RECEIVING:
             //  Receiving
-            return_val = tx_recieving(session, frame_data, frame_length, frame_size);
+            ret_frame_length = tx_recieving(session, frame_data, frame_size, requested_separation_uS);
+            break;
     }
 
     //  Padding (if enabled)
-    if(session->protocol_config.padding_enabled) {
-        for(size_t i = *frame_length; i < frame_size; i++) {
+    if(session->protocol_config.padding_enabled && ret_frame_length > 0) {
+        for(size_t i = ret_frame_length; i < frame_size; i++) {
             frame_data[i] = session->protocol_config.padding_byte;
         }
 
         //  Update frame length
-        *frame_length = frame_size;
+        ret_frame_length = frame_size;
     }
 
     //  CAN TX callback
-    if(session->callback_can_tx != NULL) { session->callback_can_tx(session, frame_data, *frame_length); }
+    if(session->callback_can_tx != NULL) { session->callback_can_tx(session, frame_data, ret_frame_length); }
 
     //  No action taken
-    return return_val;
+    return ret_frame_length;
 }
 
 /*
@@ -573,7 +571,7 @@ void flexisotp_session_idle(flexisotp_session_t* session) {
     session->fc_requested_block_size = session->protocol_config.fc_default_request_size;
     session->buffer_offset = 0;
     session->full_transmission_length = 0;
-    session->fc_idx_last_consecutive = 0;
+    session->fc_idx_track_consecutive = 0;
 }
 
 void flexisotp_session_init(flexisotp_session_t* session, void* tx_buffer, size_t tx_len, void* rx_buffer, size_t rx_len) {
