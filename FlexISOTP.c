@@ -116,38 +116,45 @@ void handle_first_frame(flexisotp_session_t* session, const uint8_t* frame_data,
 }
 
 void handle_consecutive_frame(flexisotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
-    //  Safety
-    if(session == NULL || frame_data == NULL || frame_length == 0) {
+    // Safety
+    if (session == NULL || frame_data == NULL || frame_length == 0) {
         return;
     }
 
-    //  Safety: session state
-    if(session->state != ISOTP_SESSION_RECEIVING) {
-        if(session->error_unexpected_frame_type != NULL) { session->error_unexpected_frame_type(session, frame_data, frame_length); }
+    // Safety: session state
+    if (session->state != ISOTP_SESSION_RECEIVING) {
+        if (session->error_unexpected_frame_type != NULL) { 
+            session->error_unexpected_frame_type(session, frame_data, frame_length); 
+        }
         return;
     }
 
-    //  Safety: ensure header exists
-    if(frame_length < ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX) {
-        if(session->error_invalid_frame != NULL) { session->error_invalid_frame(session, 0xFF, frame_data, frame_length); }
+    // Safety: ensure header exists
+    if (frame_length < ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX) {
+        if (session->error_invalid_frame != NULL) { 
+            session->error_invalid_frame(session, 0xFF, frame_data, frame_length); 
+        }
         return;
     }
 
-    //  Get index
+    // Get index
     uint8_t index = frame_data[ISOTP_SPEC_FRAME_CONSECUTIVE_INDEX_IDX] & ISOTP_SPEC_FRAME_CONSECUTIVE_INDEX_MASK;
-    
-    // Ensure fc_idx_track_consecutive starts at the correct value
-    if (session->buffer_offset == 0) {
+
+    // Initialize expected index on first consecutive frame
+    if (session->buffer_offset == 0 && session->fc_idx_track_consecutive == 0) {
         session->fc_idx_track_consecutive = session->protocol_config.consecutive_index_start;
     }
 
-    // Calculate expected index
-    uint8_t expected_index = session->fc_idx_track_consecutive;
+    // Verify the received index matches the expected index
+    if (index != session->fc_idx_track_consecutive) {
+        if (session->error_consecutive_out_of_order != NULL) {
+            session->error_consecutive_out_of_order(session, frame_data, frame_length, session->fc_idx_track_consecutive, index);
+        }
+        return;
+    }
 
-    //  Increment expected index
+    // Increment expected index and handle rollover
     session->fc_idx_track_consecutive++;
-
-    //  Wrap around
     if (session->fc_idx_track_consecutive > session->protocol_config.consecutive_index_end) {
         session->fc_idx_track_consecutive = session->protocol_config.consecutive_index_start;
     }
@@ -157,34 +164,27 @@ void handle_consecutive_frame(flexisotp_session_t* session, const uint8_t* frame
     const uint8_t* packet_start = frame_data + ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX;
     size_t bytes_remaining = session->full_transmission_length - session->buffer_offset;
 
-    // Safety: Verify index
-    if (index != expected_index) {
-        if (session->error_consecutive_out_of_order != NULL) {
-            session->error_consecutive_out_of_order(session, packet_start, packet_len, expected_index, index);
-        }
-        return;
-    }
-
-    //  Add to buffer
-    if(packet_len > bytes_remaining) {
+    // Add to buffer
+    if (packet_len > bytes_remaining) {
         packet_len = bytes_remaining;
     }
     memcpy(session->rx_buffer + session->buffer_offset, packet_start, packet_len);
 
-    //  Update session
+    // Update session
     session->buffer_offset += packet_len;
 
-    //  Peek callback
-    if(session->callback_peek_consecutive_frame != NULL) { session->callback_peek_consecutive_frame(session, packet_start, packet_len, session->buffer_offset - packet_len); }
-
-    //  Check if transmission is complete
-    if(session->buffer_offset >= session->full_transmission_length) {
-        session->state = ISOTP_SESSION_RECEIVED;
-        if(session->callback_transmission_rx != NULL) { session->callback_transmission_rx(session); }
+    // Peek callback
+    if (session->callback_peek_consecutive_frame != NULL) {
+        session->callback_peek_consecutive_frame(session, packet_start, packet_len, session->buffer_offset - packet_len);
     }
 
-    //  Save last index
-    session->fc_idx_track_consecutive = index;
+    // Check if transmission is complete
+    if (session->buffer_offset >= session->full_transmission_length) {
+        session->state = ISOTP_SESSION_RECEIVED;
+        if (session->callback_transmission_rx != NULL) { 
+            session->callback_transmission_rx(session); 
+        }
+    }
 }
 
 void handle_flow_control_frame(flexisotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
