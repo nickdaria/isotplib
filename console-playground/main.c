@@ -4,11 +4,18 @@
 #include <stdlib.h>
 #include "../FlexISOTP.h"
 
-//  FlexISOTP session
+/*
+    Very dirty and ugly console playground for testing FlexISOTP
+
+    Not meant to be pretty. Meant to be functional.
+*/
+
+//  FlexISOTP session & buffers
 flexisotp_session_t session;
 uint8_t tx_buffer[128];
 uint8_t rx_buffer[256];
 
+//  CAN TX buffer
 uint8_t can_tx_buf[8];
 
 //  Prototypes for command functions
@@ -17,7 +24,7 @@ void cmd_help();
 void cmd_hexdata(const uint8_t* buf, const size_t len);
 void cmd_sendTest();
 
-//  Gets line from user (not including newline). Can be empty (enter pressed).
+//  Obtain user input
 size_t user_rx_cmd(uint8_t* buffer, const size_t buffer_size) {
     size_t length = 0;
     while (length < buffer_size) {
@@ -31,7 +38,7 @@ size_t user_rx_cmd(uint8_t* buffer, const size_t buffer_size) {
     return length;
 }
 
-//  Processes user commands
+//  Handle user input
 void usr_process_cmd(const uint8_t* buffer, const size_t length) {
     // Empty input
     if (length == 0) {
@@ -67,7 +74,7 @@ void usr_process_cmd(const uint8_t* buffer, const size_t length) {
     cmd_hexdata(hex_buffer, hex_len);
 }
 
-//  Command '': Enter pressed
+//  Command: enter
 void cmd_enter() {
     uint32_t requested_separation_time = 0;
     size_t tx_size = flexisotp_session_can_tx(&session, can_tx_buf, sizeof(can_tx_buf), &requested_separation_time);
@@ -86,7 +93,7 @@ void cmd_enter() {
     printf("\n");
 }
 
-//  Command 'h': Help
+//  Command h
 void cmd_help() {
     printf("[Simple desktop playground for testing FlexISOTP]\n");
     printf("(this tool is made for use with the vscode debugger)\n");
@@ -96,7 +103,7 @@ void cmd_help() {
     printf("\t> XXXXXX Enter hex formatted data (no spaces) at the prompt to emulate CAN RX frames\n");
 }
 
-//  Command for hex data
+//  Command hexentry
 void cmd_hexdata(const uint8_t* buf, const size_t len) {
     // printf("[RX] ", len);
     // for (size_t i = 0; i < len; i++) {
@@ -108,6 +115,7 @@ void cmd_hexdata(const uint8_t* buf, const size_t len) {
     flexisotp_session_can_rx(&session, buf, len);
 }
 
+//  Generate and send test transmission of specified length
 void sendTestData(const size_t len) {
     uint8_t test_buf[len];
 
@@ -118,7 +126,7 @@ void sendTestData(const size_t len) {
     flexisotp_session_send(&session, test_buf, len);
 }
 
-//  Command for sending test data
+//  Command c
 void cmd_sendTest() {
     printf("Enter decimal size for test: ");
     fflush(stdout);
