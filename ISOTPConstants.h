@@ -2,7 +2,7 @@
 
 /*
     ISO-TP Constants
-    FlexISOTP
+    ISOTPlib - ISO-TP Library for embedded systems
     ndaria (me@nickdaria.com) @nickdaria
 
     This file contains constants used in the ISO-TP protocol

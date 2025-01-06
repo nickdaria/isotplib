@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Build FlexISOTP Console Playground",
+            "label": "Build ISOTP Console Playground",
             "type": "shell",
             "command": "gcc",
             "args": [
@@ -10,7 +10,7 @@
                 "-o",
                 "${workspaceFolder}/console-playground/console-playground.exe",
                 "${workspaceFolder}/console-playground/main.c",
-                "${workspaceFolder}/FlexISOTP.c",
+                "${workspaceFolder}/ISOTPSession.c",
                 "${workspaceFolder}/ISOTPConversions.c",
                 "-I",
                 "${workspaceFolder}"
@@ -20,10 +20,10 @@
                 "isDefault": true
             },
             "problemMatcher": ["$gcc"],
-            "detail": "Build FlexISOTP console playground application."
+            "detail": "Build ISOTP console playground application."
         },
         {
-            "label": "Run FlexISOTP Console Playground",
+            "label": "Run ISOTP Console Playground",
             "type": "shell",
             "command": "${workspaceFolder}/console-playground/console-playground.exe",
             "group": {
@@ -36,7 +36,7 @@
                 "focus": false,
                 "panel": "shared"
             },
-            "dependsOn": "Build FlexISOTP Console Playground",
+            "dependsOn": "Build ISOTP Console Playground",
             "problemMatcher": []
         }
     ]

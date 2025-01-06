@@ -2,16 +2,16 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
-#include "../FlexISOTP.h"
+#include "../ISOTP.h"
 
 /*
-    Very dirty and ugly console playground for testing FlexISOTP
+    Very dirty and ugly console playground for testing ISOTPlib
 
     Not meant to be pretty. Meant to be functional.
 */
 
-//  FlexISOTP session & buffers
-flexisotp_session_t session;
+//  ISOTPlib session & buffers
+isotp_session_t session;
 uint8_t tx_buffer[128];
 uint8_t rx_buffer[256];
 
@@ -77,7 +77,7 @@ void usr_process_cmd(const uint8_t* buffer, const size_t length) {
 //  Command: enter
 void cmd_enter() {
     uint32_t requested_separation_time = 0;
-    size_t tx_size = flexisotp_session_can_tx(&session, can_tx_buf, sizeof(can_tx_buf), &requested_separation_time);
+    size_t tx_size = isotp_session_can_tx(&session, can_tx_buf, sizeof(can_tx_buf), &requested_separation_time);
 
 
     if(tx_size > 0) {
@@ -95,7 +95,7 @@ void cmd_enter() {
 
 //  Command h
 void cmd_help() {
-    printf("[Simple desktop playground for testing FlexISOTP]\n");
+    printf("[Simple desktop playground for testing ISOTPlib]\n");
     printf("(this tool is made for use with the vscode debugger)\n");
     printf("\th - help\n");
     printf("\tc - start transmission\n");
@@ -111,8 +111,8 @@ void cmd_hexdata(const uint8_t* buf, const size_t len) {
     // }
     // printf("\n");
 
-    //  Pass into FlexISOTP
-    flexisotp_session_can_rx(&session, buf, len);
+    //  Pass into ISOTPlib
+    isotp_session_can_rx(&session, buf, len);
 }
 
 //  Generate and send test transmission of specified length
@@ -123,7 +123,7 @@ void sendTestData(const size_t len) {
         test_buf[i] = i;
     }
 
-    flexisotp_session_send(&session, test_buf, len);
+    isotp_session_send(&session, test_buf, len);
 }
 
 //  Command c
@@ -161,7 +161,7 @@ void playground() {
 /*
     Callbacks
 */
-void cb_can_rx(flexisotp_session_t *session, const uint8_t *msg_data, const size_t msg_length) {
+void cb_can_rx(isotp_session_t *session, const uint8_t *msg_data, const size_t msg_length) {
     printf("[RX] ");
     for (size_t i = 0; i < msg_length; i++) {
         printf("%02X ", msg_data[i]);
@@ -169,7 +169,7 @@ void cb_can_rx(flexisotp_session_t *session, const uint8_t *msg_data, const size
     printf("\n");
 }
 
-void cb_can_tx(flexisotp_session_t *session, const uint8_t *msg_data, const size_t msg_length) {
+void cb_can_tx(isotp_session_t *session, const uint8_t *msg_data, const size_t msg_length) {
     printf("[TX] ");
     for (size_t i = 0; i < msg_length; i++) {
         printf("%02X ", msg_data[i]);
@@ -177,57 +177,57 @@ void cb_can_tx(flexisotp_session_t *session, const uint8_t *msg_data, const size
     printf("\n");
 }
 
-void cb_error_invalid_frame(flexisotp_session_t *context, const isotp_spec_frame_type_t rx_frame_type, const uint8_t *msg_data, const size_t msg_length) {
+void cb_error_invalid_frame(isotp_session_t *context, const isotp_spec_frame_type_t rx_frame_type, const uint8_t *msg_data, const size_t msg_length) {
     printf("[ERR] Invalid frame, type: %u, length: %u ", rx_frame_type, msg_length);
     for (size_t i = 0; i < msg_length; i++) {
         printf("%02X ", msg_data[i]);
     }
     printf("\n");
 
-    flexisotp_session_idle(context);
+    isotp_session_idle(context);
 }
 
-void cb_error_unexpected_frame_type(flexisotp_session_t *context, const uint8_t *msg_data, const size_t msg_length) {
+void cb_error_unexpected_frame_type(isotp_session_t *context, const uint8_t *msg_data, const size_t msg_length) {
     printf("[ERR] Unexpected frame type, length: %u ", msg_length);
     for (size_t i = 0; i < msg_length; i++) {
         printf("%02X ", msg_data[i]);
     }
     printf("\n");
 
-    flexisotp_session_idle(context);
+    isotp_session_idle(context);
 }
 
-void cb_error_partner_aborted_transfer(flexisotp_session_t *context, const uint8_t *msg_data, const size_t msg_length) {
+void cb_error_partner_aborted_transfer(isotp_session_t *context, const uint8_t *msg_data, const size_t msg_length) {
     printf("[ERR] Partner aborted transfer, length: %u ", msg_length);
     for (size_t i = 0; i < msg_length; i++) {
         printf("%02X ", msg_data[i]);
     }
     printf("\n");
     
-    flexisotp_session_idle(context);
+    isotp_session_idle(context);
 }
 
-void cb_error_transmission_too_large(flexisotp_session_t *context, const uint8_t *data, const size_t length, const size_t requested_size) {
+void cb_error_transmission_too_large(isotp_session_t *context, const uint8_t *data, const size_t length, const size_t requested_size) {
     printf("[ERR] Transmission too large, length: %u, requested: %u ", length, requested_size);
     for (size_t i = 0; i < length; i++) {
         printf("%02X ", data[i]);
     }
     printf("\n");
     
-    flexisotp_session_idle(context);
+    isotp_session_idle(context);
 }
 
-void cb_error_consecutive_out_of_order(flexisotp_session_t *context, const uint8_t *data, const size_t length, const uint8_t expected_index, const uint8_t received_index) {
+void cb_error_consecutive_out_of_order(isotp_session_t *context, const uint8_t *data, const size_t length, const uint8_t expected_index, const uint8_t received_index) {
     printf("[ERR] Consecutive out of order, length: %u, expected: %u, received: %u ", length, expected_index, received_index);
     for (size_t i = 0; i < length; i++) {
         printf("%02X ", data[i]);
     }
     printf("\n");
     
-    flexisotp_session_idle(context);
+    isotp_session_idle(context);
 }
 
-void cb_transmission_rx(flexisotp_session_t *context) {
+void cb_transmission_rx(isotp_session_t *context) {
     printf("[CB Recieved] ");
     uint8_t* buffer = (uint8_t*)context->rx_buffer; // Cast rx_buffer to uint8_t*
     for(size_t i = 0; i < context->full_transmission_length; i++) {
@@ -236,10 +236,10 @@ void cb_transmission_rx(flexisotp_session_t *context) {
     printf("\n");
 
     //  Reset session
-    flexisotp_session_idle(context);
+    isotp_session_idle(context);
 }
 
-void cb_peek_first_frame(flexisotp_session_t *context, const uint8_t *data, const size_t length) {
+void cb_peek_first_frame(isotp_session_t *context, const uint8_t *data, const size_t length) {
     printf("[CB] Peek first frame, length: %u ", length);
     for (size_t i = 0; i < length; i++) {
         printf("%02X ", data[i]);
@@ -247,7 +247,7 @@ void cb_peek_first_frame(flexisotp_session_t *context, const uint8_t *data, cons
     printf("\n");
 }
 
-void cb_peek_consecutive_frame(flexisotp_session_t *context, const uint8_t *data, const size_t length, const size_t start_idx) {
+void cb_peek_consecutive_frame(isotp_session_t *context, const uint8_t *data, const size_t length, const size_t start_idx) {
     printf("[CB] Peek consecutive frame, length: %u, start: %u ", length, start_idx);
     for (size_t i = 0; i < length; i++) {
         printf("%02X ", data[i]);
@@ -256,7 +256,7 @@ void cb_peek_consecutive_frame(flexisotp_session_t *context, const uint8_t *data
 }
 
 int main() {
-    flexisotp_session_init(&session, &tx_buffer, sizeof(tx_buffer), &rx_buffer, sizeof(rx_buffer));
+    isotp_session_init(&session, &tx_buffer, sizeof(tx_buffer), &rx_buffer, sizeof(rx_buffer));
 
     //  Register callbacks
     session.callback_can_rx = (void (*)(void *, const uint8_t *, const size_t))cb_can_rx;

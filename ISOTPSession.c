@@ -1,11 +1,11 @@
-#include "FlexISOTP.h"
+#include "ISOTPSession.h"
 
 #include <string.h>
 #include "ISOTPConversions.h"
 
 
 //  Helper to decrement fc allowed frames
-void decrement_fc_allowed_frames(flexisotp_session_t* session) {
+void decrement_fc_allowed_frames(isotp_session_t* session) {
     if(session->fc_allowed_frames_remaining > 0 && session->fc_allowed_frames_remaining != UINT16_MAX) {
         session->fc_allowed_frames_remaining--;
     }
@@ -18,14 +18,14 @@ void decrement_fc_allowed_frames(flexisotp_session_t* session) {
     These functions are called when the current session mode has received a frame and conditions allow processing
 
 */
-void handle_single_frame(flexisotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
+void handle_single_frame(isotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
     //  Safety
     if(session == NULL || frame_data == NULL || frame_length == 0) {
         return;
     }
     
     //  Reset session state
-    flexisotp_session_idle(session);
+    isotp_session_idle(session);
 
     //  Update session state
     session->state = ISOTP_SESSION_RECEIVING;
@@ -69,17 +69,17 @@ void handle_single_frame(flexisotp_session_t* session, const uint8_t* frame_data
     
     //  Callback
     if(session->callback_transmission_rx != NULL) { session->callback_transmission_rx(session); }
-    //if(session->state == ISOTP_SESSION_RECEIVED) { flexisotp_session_idle(session); }
+    //if(session->state == ISOTP_SESSION_RECEIVED) { isotp_session_idle(session); }
 }
 
-void handle_first_frame(flexisotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
+void handle_first_frame(isotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
     //  Safety
     if(session == NULL || frame_data == NULL || frame_length == 0) {
         return;
     }
 
     //  Reset session state
-    flexisotp_session_idle(session);
+    isotp_session_idle(session);
 
     //  Update session state
     session->state = ISOTP_SESSION_RECEIVING;
@@ -118,7 +118,7 @@ void handle_first_frame(flexisotp_session_t* session, const uint8_t* frame_data,
     if(session->callback_peek_first_frame != NULL) { session->callback_peek_first_frame(session, packet_start, packet_len); }
 }
 
-void handle_consecutive_frame(flexisotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
+void handle_consecutive_frame(isotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
     // Safety
     if (session == NULL || frame_data == NULL || frame_length == 0) {
         return;
@@ -188,11 +188,11 @@ void handle_consecutive_frame(flexisotp_session_t* session, const uint8_t* frame
 
         //  Callback
         if(session->callback_transmission_rx != NULL) { session->callback_transmission_rx(session); }
-        //if(session->state == ISOTP_SESSION_RECEIVED) { flexisotp_session_idle(session); }
+        //if(session->state == ISOTP_SESSION_RECEIVED) { isotp_session_idle(session); }
     }
 }
 
-void handle_flow_control_frame(flexisotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
+void handle_flow_control_frame(isotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
     //  Safety
     if(session == NULL || frame_data == NULL || frame_length == 0) {
         return;
@@ -216,7 +216,7 @@ void handle_flow_control_frame(flexisotp_session_t* session, const uint8_t* fram
     //  Read separation time
     uint32_t separation_time = 0;
     if(frame_length >= ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_IDX + 1) {
-        separation_time = isotp_fc_separation_time_us(frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_IDX] & ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_MASK);
+        separation_time = isotp_spec_fc_separation_time_us(frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_IDX] & ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_MASK);
     }
 
     //  Process FC frame
@@ -258,7 +258,7 @@ void handle_flow_control_frame(flexisotp_session_t* session, const uint8_t* fram
 */
 
 //  Session is idle, accept new frames
-void rx_idle(const isotp_spec_frame_type_t frame_type, flexisotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
+void rx_idle(const isotp_spec_frame_type_t frame_type, isotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
     switch(frame_type) {
         case ISOTP_SPEC_FRAME_SINGLE:
             //  [IDEAL] Single frame received
@@ -280,16 +280,16 @@ void rx_idle(const isotp_spec_frame_type_t frame_type, flexisotp_session_t* sess
     }
 }
 
-void rx_transmitting(const isotp_spec_frame_type_t frame_type, flexisotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
+void rx_transmitting(const isotp_spec_frame_type_t frame_type, isotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
     switch(frame_type) {
         case ISOTP_SPEC_FRAME_SINGLE:
             //  Single frame received, abandon current transmission to satisfy new request
-            flexisotp_session_idle(session);
+            isotp_session_idle(session);
             handle_single_frame(session, frame_data, frame_length);
             break;
         case ISOTP_SPEC_FRAME_FIRST:
             //  First frame received, abandon current transmission to satisfy new request
-            flexisotp_session_idle(session);
+            isotp_session_idle(session);
             handle_first_frame(session, frame_data, frame_length);
             break;
         case ISOTP_SPEC_FRAME_CONSECUTIVE:
@@ -307,7 +307,7 @@ void rx_transmitting(const isotp_spec_frame_type_t frame_type, flexisotp_session
     }
 }
 
-void rx_recieving(const isotp_spec_frame_type_t frame_type, flexisotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
+void rx_recieving(const isotp_spec_frame_type_t frame_type, isotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
     switch(frame_type) {
         case ISOTP_SPEC_FRAME_SINGLE:
             //  Single frame received, abandon current transmission to satisfy new request
@@ -332,12 +332,12 @@ void rx_recieving(const isotp_spec_frame_type_t frame_type, flexisotp_session_t*
     }
 }
 
-void rx_received(const isotp_spec_frame_type_t frame_type, flexisotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
+void rx_received(const isotp_spec_frame_type_t frame_type, isotp_session_t* session, const uint8_t* frame_data, const size_t frame_length) {
     //  Program has not yet handled RX buffer
     //  We need to have a callback and return a busy error
 }
 
-void flexisotp_session_can_rx(flexisotp_session_t* session, const uint8_t* data, const size_t length) {
+void isotp_session_can_rx(isotp_session_t* session, const uint8_t* data, const size_t length) {
     //  Safety
     if(session == NULL || data == NULL || length == 0) {
         return;
@@ -377,7 +377,7 @@ void flexisotp_session_can_rx(flexisotp_session_t* session, const uint8_t* data,
     CAN Transmission
 
 */
-size_t tx_transmitting(flexisotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS) {
+size_t tx_transmitting(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS) {
     //  Verify we are transmitting
     if(session->state != ISOTP_SESSION_TRANSMITTING) {
         return 0;
@@ -485,14 +485,14 @@ size_t tx_transmitting(flexisotp_session_t* session, uint8_t* frame_data, const 
     //  Check if done
     if(session->buffer_offset >= session->full_transmission_length) {
         //  Done
-        flexisotp_session_idle(session);
+        isotp_session_idle(session);
     }
 
     //  Return
     return ret_frame_size;
 }
 
-size_t tx_recieving(flexisotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS) {
+size_t tx_recieving(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS) {
     //  Verify we are recieving data
     if(session->state != ISOTP_SESSION_RECEIVING) {
         return 0;
@@ -515,7 +515,7 @@ size_t tx_recieving(flexisotp_session_t* session, uint8_t* frame_data, const siz
         }
         
         //  Seperation time
-        uint8_t seperation_time = isotp_fc_separation_time_byte(session->fc_requested_separation_uS);
+        uint8_t seperation_time = isotp_spec_fc_separation_time_byte(session->fc_requested_separation_uS);
 
         //  Assemble CAN frame
         frame_data[ISOTP_SPEC_FRAME_TYPE_IDX] &= ~ISOTP_SPEC_FRAME_TYPE_MASK; // Clear the type bits
@@ -546,7 +546,7 @@ size_t tx_recieving(flexisotp_session_t* session, uint8_t* frame_data, const siz
     return return_val;
 }
 
-size_t flexisotp_session_can_tx(flexisotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS) {
+size_t isotp_session_can_tx(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS) {
     //  Safety
     if(session == NULL || frame_data == NULL) {
         return 0;
@@ -593,7 +593,7 @@ size_t flexisotp_session_can_tx(flexisotp_session_t* session, uint8_t* frame_dat
     Helpers
 
 */
-void flexisotp_session_idle(flexisotp_session_t* session) {
+void isotp_session_idle(isotp_session_t* session) {
     //  Safety
     if(session == NULL) {
         return;
@@ -609,14 +609,14 @@ void flexisotp_session_idle(flexisotp_session_t* session) {
     session->fc_idx_track_consecutive = 0;
 }
 
-size_t flexisotp_session_send(flexisotp_session_t* session, const uint8_t* data, const size_t data_length) {
+size_t isotp_session_send(isotp_session_t* session, const uint8_t* data, const size_t data_length) {
     //  Safety
     if(session == NULL || data == NULL || data_length == 0) {
         return 0;
     }
 
     //  Reset session state
-    flexisotp_session_idle(session);
+    isotp_session_idle(session);
 
     //  Copy data into buffer
     size_t copy_len = data_length;
@@ -635,7 +635,7 @@ size_t flexisotp_session_send(flexisotp_session_t* session, const uint8_t* data,
     return copy_len;
 }
 
-void flexisotp_session_init(flexisotp_session_t* session, void* tx_buffer, size_t tx_len, void* rx_buffer, size_t rx_len) {
+void isotp_session_init(isotp_session_t* session, void* tx_buffer, size_t tx_len, void* rx_buffer, size_t rx_len) {
     //  Safety
     if(session == NULL) {
         return;
@@ -668,5 +668,5 @@ void flexisotp_session_init(flexisotp_session_t* session, void* tx_buffer, size_
     session->error_consecutive_out_of_order = NULL;
 
     //  Reset session state
-    flexisotp_session_idle(session);
+    isotp_session_idle(session);
 }

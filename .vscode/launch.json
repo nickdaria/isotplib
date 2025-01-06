@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug FlexISOTP Console Playground",
+            "name": "Debug ISOTP Console Playground",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/console-playground/console-playground.exe",
@@ -20,7 +20,7 @@
                 }
             ],
             "miDebuggerPath": "gdb",
-            "preLaunchTask": "Build FlexISOTP Console Playground"
+            "preLaunchTask": "Build ISOTP Console Playground"
         }
     ]
 }

@@ -12,7 +12,7 @@ typedef enum {
 	ISOTP_SESSION_TRANSMITTING_AWAITING_FC = 2,
 	ISOTP_SESSION_RECEIVING = 3,
 	ISOTP_SESSION_RECEIVED = 4,
-} flexisotp_session_state_t;
+} isotp_session_state_t;
 
 typedef struct {
 	//	Padding
@@ -24,9 +24,9 @@ typedef struct {
 
 	uint32_t fc_default_separation_time;	//  Valid uS seperation time for flow control frames (0 = no seperation, 100-900 uS or 1000-127000 uS)
 	size_t fc_default_request_size;			//  Number of frames to request in a flow control if not overridden (0 = all)
-} flexisotp_protocol_config_t;
+} isotp_session_protocol_config_t;
 
-// FlexISOTP session
+// ISOTP session
 typedef struct {
 	//	Raw CAN Callbacks
 	void (*callback_can_rx)(void* context, const uint8_t* msg_data, const size_t msg_length);
@@ -47,7 +47,7 @@ typedef struct {
 	void (*callback_peek_consecutive_frame) (void* context, const uint8_t* data, const size_t length, const size_t start_idx);
 
 	//	ISO-TP Protocol Configuration
-	flexisotp_protocol_config_t protocol_config;
+	isotp_session_protocol_config_t protocol_config;
 
 	//  Buffers
 	void* tx_buffer;
@@ -56,7 +56,7 @@ typedef struct {
 	size_t rx_len;
 
 	//  Current Session State
-	flexisotp_session_state_t state;			//  (Live) Current session state
+	isotp_session_state_t state;			//  (Live) Current session state
 
 	//  Bidirectional parameters
 	uint16_t fc_allowed_frames_remaining;		//  (Live) Counter of frames that can be sent/recieved before flow control reqd (0 = FC needed, UINT16_MAX = FC not required)
@@ -67,7 +67,7 @@ typedef struct {
 
 	size_t full_transmission_length;			//  (Live) Reported length of the transmission being sent/recieved
 	size_t buffer_offset;                		//  (Live) How many bytes have been sent/recieved from the current buffer
-} flexisotp_session_t;
+} isotp_session_t;
 
 /**
  * @brief Resets entire session to default state, callbacks to NULL, and loads provided buffer data
@@ -78,12 +78,12 @@ typedef struct {
  * @param rx_buffer 
  * @param rx_len 
  */
-void flexisotp_session_init(flexisotp_session_t* session, void* tx_buffer, size_t tx_len, void* rx_buffer, size_t rx_len);
+void isotp_session_init(isotp_session_t* session, void* tx_buffer, size_t tx_len, void* rx_buffer, size_t rx_len);
 
 /**
  * @brief Resets session state to idle
  */
-void flexisotp_session_idle(flexisotp_session_t* session);
+void isotp_session_idle(isotp_session_t* session);
 
 /**
  * @brief Copies data to session tx buffer and starts transmission
@@ -93,7 +93,7 @@ void flexisotp_session_idle(flexisotp_session_t* session);
  * @param data_length 
  * @return size_t 
  */
-size_t flexisotp_session_send(flexisotp_session_t* session, const uint8_t* data, const size_t data_length);
+size_t isotp_session_send(isotp_session_t* session, const uint8_t* data, const size_t data_length);
 
 /**
  * @brief Processes a recieved CAN frame and associated callbacks
@@ -102,7 +102,7 @@ size_t flexisotp_session_send(flexisotp_session_t* session, const uint8_t* data,
  * @param frame_data 
  * @param frame_length 
  */
-void flexisotp_session_can_rx(flexisotp_session_t* session, const uint8_t* frame_data, const size_t frame_length);
+void isotp_session_can_rx(isotp_session_t* session, const uint8_t* frame_data, const size_t frame_length);
 
 /**
  * @brief Fetches the next ISO-TP frame to transmit. Returns 0 if none, > 0 if frame (requested uS delay).
@@ -112,4 +112,4 @@ void flexisotp_session_can_rx(flexisotp_session_t* session, const uint8_t* frame
  * @param frame_length Outputted length of frame
  * @param frame_size Size of frame allowed
  */
-size_t flexisotp_session_can_tx(flexisotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS);
+size_t isotp_session_can_tx(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS);
