@@ -39,17 +39,35 @@ void handle_single_frame(isotp_session_t* session, const uint8_t* frame_data, co
     //  Extract expected length
     session->full_transmission_length = frame_data[ISOTP_SPEC_FRAME_SINGLE_LEN_IDX] & ISOTP_SPEC_FRAME_SINGLE_LEN_MASK;
 
+    //  Pointer to data
+    const uint8_t* packet_start = frame_data + ISOTP_SPEC_FRAME_SINGLE_DATASTART_IDX;
+
     //  Calculate packet length
     size_t packet_len = frame_length - ISOTP_SPEC_FRAME_SINGLE_DATASTART_IDX;
+
+    //  CAN-FD
+    if(session->full_transmission_length == 0) {
+        //  Length safety
+        if(frame_length < ISOTP_SPEC_FRAME_SINGLE_FD_DATASTART_IDX) {
+            if(session->error_invalid_frame != NULL) { session->error_invalid_frame(session, 0xFD, frame_data, frame_length); }
+            return;
+        }
+
+        //  Extract expected length using CAN-FD spec
+        session->full_transmission_length = frame_data[ISOTP_SPEC_FRAME_SINGLE_FD_LEN_IDX] & ISOTP_SPEC_FRAME_SINGLE_FD_LEN_MASK;
+    
+        //  Update start pointer
+        packet_start = frame_data + ISOTP_SPEC_FRAME_SINGLE_FD_DATASTART_IDX;
+
+        //  Recalculate packet length
+        packet_len = frame_length - ISOTP_SPEC_FRAME_SINGLE_FD_DATASTART_IDX;
+    }
 
     //  Safety for length byte being at least length of msg_length
     if(packet_len < session->full_transmission_length) {
         if(session->error_invalid_frame != NULL) { session->error_invalid_frame(session, 0xFF, frame_data, frame_length); }
         return;
     }
-
-    //  Pointer to data
-    const uint8_t* packet_start = frame_data + ISOTP_SPEC_FRAME_SINGLE_DATASTART_IDX;
 
     //  Safety for buffer being large enough
     if(session->full_transmission_length > session->rx_len) {
@@ -95,11 +113,34 @@ void handle_first_frame(isotp_session_t* session, const uint8_t* frame_data, con
     size_t elen_lsb = frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_LSB_IDX] & ISOTP_SPEC_FRAME_FIRST_LEN_LSB_MASK;
     session->full_transmission_length = (elen_msb << 8) | elen_lsb;
 
+    //  Pointer to data
+    const uint8_t* packet_start = frame_data + ISOTP_SPEC_FRAME_FIRST_DATASTART_IDX;
+    
     //  Calculate packet length
     size_t packet_len = frame_length - ISOTP_SPEC_FRAME_FIRST_DATASTART_IDX;
 
-    //  Pointer to data
-    const uint8_t* packet_start = frame_data + ISOTP_SPEC_FRAME_FIRST_DATASTART_IDX;
+    //  CAN-FD
+    if(session->full_transmission_length == 0) {
+        //  Length safety
+        if (frame_length < ISOTP_SPEC_FRAME_FIRST_FD_DATASTART_IDX) {
+            if (session->error_invalid_frame != NULL) {
+                session->error_invalid_frame(session, 0xFD, frame_data, frame_length);
+            }
+            return;
+        }
+
+        //  Extract expected length using CAN-FD spec
+        session->full_transmission_length = 0;
+        for (size_t i = ISOTP_SPEC_FRAME_FIRST_FD_MSB_IDX; i <= ISOTP_SPEC_FRAME_FIRST_FD_LSB_IDX; ++i) {
+            session->full_transmission_length |= frame_data[i] << (8 * (ISOTP_SPEC_FRAME_FIRST_FD_LSB_IDX - i));
+        }
+
+        //  Update start pointer
+        packet_start = frame_data + ISOTP_SPEC_FRAME_FIRST_FD_DATASTART_IDX;
+
+        //  Recalculate packet length
+        packet_len = frame_length - ISOTP_SPEC_FRAME_FIRST_FD_DATASTART_IDX;
+    }
 
     //  Safety for buffer being large enough
     if(session->full_transmission_length > session->rx_len) {

@@ -6,6 +6,11 @@
     ndaria (me@nickdaria.com) @nickdaria
 
     This file contains constants used in the ISO-TP protocol
+
+    Sources:
+        ISO-TP                          https://en.wikipedia.org/wiki/ISO_15765-2
+        ISO-TP CAN FD Frame Format      https://en.wikipedia.org/wiki/CAN_FD#CAN_&_CAN_FD_TP_Headers
+
 */
 
 // ISO-TP frame types
@@ -27,6 +32,12 @@ typedef enum {
 
 #define ISOTP_SPEC_FRAME_SINGLE_DATASTART_IDX 1
 
+//  Single frame (CAN FD)
+#define ISOTP_SPEC_FRAME_SINGLE_FD_LEN_IDX 1
+#define ISOTP_SPEC_FRAME_SINGLE_FD_LEN_MASK 0xFF
+
+#define ISOTP_SPEC_FRAME_SINGLE_FD_DATASTART_IDX 2
+
 //  First frame
 #define ISOTP_SPEC_FRAME_FIRST_LEN_MSB_IDX 0
 #define ISOTP_SPEC_FRAME_FIRST_LEN_MSB_MASK 0x0F
@@ -35,6 +46,11 @@ typedef enum {
 #define ISOTP_SPEC_FRAME_FIRST_LEN_LSB_MASK 0xFF
 
 #define ISOTP_SPEC_FRAME_FIRST_DATASTART_IDX 2
+
+//  First frame (CAN FD)
+#define ISOTP_SPEC_FRAME_FIRST_FD_MSB_IDX 2
+#define ISOTP_SPEC_FRAME_FIRST_FD_LSB_IDX 5
+#define ISOTP_SPEC_FRAME_FIRST_FD_DATASTART_IDX 6
 
 //  Consecutive frame
 #define ISOTP_SPEC_FRAME_CONSECUTIVE_INDEX_IDX 0
