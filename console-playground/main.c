@@ -15,8 +15,6 @@ isotp_session_t session;
 uint8_t tx_buffer[128];
 uint8_t rx_buffer[256];
 
-bool is_fd = false;
-
 //  CAN TX buffer
 uint8_t can_tx_buf[8];
 uint8_t can_tx_fd_buf[64];
@@ -26,7 +24,7 @@ void cmd_enter();
 void cmd_help();
 void cmd_hexdata(const uint8_t* buf, const size_t len);
 void cmd_sendTest();
-void cmd_toggleFD();
+void cmd_toggleFormat();
 
 //  Obtain user input
 size_t user_rx_cmd(uint8_t* buffer, const size_t buffer_size) {
@@ -64,7 +62,7 @@ void usr_process_cmd(const uint8_t* buffer, const size_t length) {
 
     // 'f' command
     if (length == 1 && buffer[0] == 'f') {
-        cmd_toggleFD();
+        cmd_toggleFormat();
         return;
     }
 
@@ -88,12 +86,15 @@ void usr_process_cmd(const uint8_t* buffer, const size_t length) {
 void cmd_enter() {
     uint32_t requested_separation_time = 0;
     size_t tx_size;
-    
-    if(is_fd) {
-        tx_size = isotp_session_can_tx_fd(&session, can_tx_fd_buf, sizeof(can_tx_fd_buf), &requested_separation_time);
-    }
-    else {
-        tx_size = isotp_session_can_tx(&session, can_tx_buf, sizeof(can_tx_buf), &requested_separation_time);
+
+    switch(session.protocol_config.frame_format) {
+        case ISOTP_FORMAT_FD:
+            tx_size = isotp_session_can_tx(&session, can_tx_fd_buf, sizeof(can_tx_fd_buf), &requested_separation_time);
+            break;
+        case ISOTP_FORMAT_NORMAL:
+        case ISOTP_FORMAT_LIN:
+            tx_size = isotp_session_can_tx(&session, can_tx_buf, sizeof(can_tx_buf), &requested_separation_time);
+            break;
     }
 
     if(tx_size > 0) {
@@ -165,9 +166,23 @@ void cmd_sendTest() {
     }
 }
 
-void cmd_toggleFD() {
-    is_fd = !is_fd;
-    printf("CAN FD: %s\n", is_fd ? "Enabled" : "Disabled");
+void cmd_toggleFormat() {
+    //  Loop through formats
+    session.protocol_config.frame_format++;
+    if(session.protocol_config.frame_format >= ISOTP_FORMAT_cnt) { session.protocol_config.frame_format = ISOTP_FORMAT_NORMAL; }
+    
+    printf("Format: ");
+    switch(session.protocol_config.frame_format) {
+        case ISOTP_FORMAT_FD:
+            printf("CAN FD\n");
+            break;
+        case ISOTP_FORMAT_NORMAL:
+            printf("CAN Normal\n");
+            break;
+        case ISOTP_FORMAT_LIN:
+            printf("LIN\n");
+            break;
+    }
 }
 
 //  Main loop
@@ -278,7 +293,7 @@ void cb_peek_consecutive_frame(isotp_session_t *context, const uint8_t *data, co
 }
 
 int main() {
-    isotp_session_init(&session, &tx_buffer, sizeof(tx_buffer), &rx_buffer, sizeof(rx_buffer));
+    isotp_session_init(&session, ISOTP_FORMAT_NORMAL, &tx_buffer, sizeof(tx_buffer), &rx_buffer, sizeof(rx_buffer));
 
     //  Register callbacks
     session.callback_can_rx = (void (*)(void *, const uint8_t *, const size_t))cb_can_rx;

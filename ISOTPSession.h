@@ -14,7 +14,17 @@ typedef enum {
 	ISOTP_SESSION_RECEIVED = 4,
 } isotp_session_state_t;
 
+typedef enum {
+	ISOTP_FORMAT_NORMAL,	//	CAN 2.0 	ISO 15765-2
+	ISOTP_FORMAT_FD,		//	CAN FD 		ISO 15765-2
+	ISOTP_FORMAT_LIN,		//	LIN 		ISO 17987-2
+	ISOTP_FORMAT_cnt,
+} isotp_format_t;
+
 typedef struct {
+	//	Frame Format
+	isotp_format_t frame_format;					//	ISO-TP frame frame_format
+
 	//	Padding
 	bool padding_enabled;					//  Flag indicating if padding should be used
 	uint8_t padding_byte;					//  Byte to use for padding
@@ -126,7 +136,7 @@ typedef struct {
  * @param rx_buffer 
  * @param rx_len 
  */
-void isotp_session_init(isotp_session_t* session, void* tx_buffer, size_t tx_len, void* rx_buffer, size_t rx_len);
+void isotp_session_init(isotp_session_t* session, const isotp_format_t frame_format, void* tx_buffer, size_t tx_len, void* rx_buffer, size_t rx_len);
 
 /**
  * @brief Allows for live reconfiguration of the RX buffer. Intended to be used from len_rx callback to allow for dynamic buffer allocation if desired. Only works in idle & memory_config callback states.
@@ -172,14 +182,3 @@ void isotp_session_can_rx(isotp_session_t* session, const uint8_t* frame_data, c
  * @param frame_size Size of frame allowed
  */
 size_t isotp_session_can_tx(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS);
-
-/**
- * @brief Fetches the next ISO-TP frame to transmit (CAN FD spec)
- * 
- * @param session Session to work with
- * @param frame_data Outputted frame data
- * @param frame_size Length of frame buffer
- * @param requested_separation_uS Returns requested delay until next frame transmit in uS
- * @return size_t Size of message to send (0 = no message)
- */
-size_t isotp_session_can_tx_fd(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS);

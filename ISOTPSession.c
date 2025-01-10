@@ -47,9 +47,15 @@ void handle_single_frame(isotp_session_t* session, const uint8_t* frame_data, co
 
     //  CAN-FD
     if(session->full_transmission_length == 0) {
+        //  FD only works when protocol settings allow
+        if(session->protocol_config.frame_format != ISOTP_FORMAT_FD) {
+            if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, ISOTP_SPEC_FRAME_SINGLE, frame_data, frame_length); }
+            return;
+        }
+
         //  Length safety
         if(frame_length < ISOTP_SPEC_FRAME_SINGLE_FD_DATASTART_IDX) {
-            if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, 0xFD, frame_data, frame_length); }
+            if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, ISOTP_SPEC_FRAME_SINGLE, frame_data, frame_length); }
             return;
         }
 
@@ -124,6 +130,12 @@ void handle_first_frame(isotp_session_t* session, const uint8_t* frame_data, con
 
     //  CAN-FD
     if(session->full_transmission_length == 0) {
+        //  FD only works when protocol settings allow
+        if(session->protocol_config.frame_format != ISOTP_FORMAT_FD) {
+            if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, ISOTP_SPEC_FRAME_SINGLE, frame_data, frame_length); }
+            return;
+        }
+
         //  Length safety
         if (frame_length < ISOTP_SPEC_FRAME_FIRST_FD_DATASTART_IDX) {
             if (session->callback_error_invalid_frame != NULL) {
@@ -421,7 +433,7 @@ void isotp_session_can_rx(isotp_session_t* session, const uint8_t* data, const s
     CAN Transmission
 
 */
-size_t tx_transmitting(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS, bool is_fd) {
+size_t tx_transmitting(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS) {
     //  Verify we are transmitting
     if(session->state != ISOTP_SESSION_TRANSMITTING) {
         return 0;
@@ -442,15 +454,18 @@ size_t tx_transmitting(isotp_session_t* session, uint8_t* frame_data, const size
             //  Clear length bits
             frame_data[ISOTP_SPEC_FRAME_SINGLE_LEN_IDX] &= ~ISOTP_SPEC_FRAME_SINGLE_LEN_MASK; // Clear the length bits
 
-            //  Set the length
-            if(is_fd) {
-                //  Set FD length
-                frame_data[ISOTP_SPEC_FRAME_SINGLE_FD_LEN_IDX] &= ~ISOTP_SPEC_FRAME_SINGLE_FD_LEN_MASK; // Clear the length bits
-                frame_data[ISOTP_SPEC_FRAME_SINGLE_FD_LEN_IDX] |= session->full_transmission_length & ISOTP_SPEC_FRAME_SINGLE_FD_LEN_MASK;
-            }
-            else {
-                //  Set the length
-                frame_data[ISOTP_SPEC_FRAME_SINGLE_LEN_IDX] |= session->full_transmission_length & ISOTP_SPEC_FRAME_SINGLE_LEN_MASK;
+            //  Insert length
+            switch(session->protocol_config.frame_format) {
+                case ISOTP_FORMAT_FD:
+                    //  Set FD length
+                    frame_data[ISOTP_SPEC_FRAME_SINGLE_FD_LEN_IDX] &= (uint8_t)~ISOTP_SPEC_FRAME_SINGLE_FD_LEN_MASK; // Clear the length bits
+                    frame_data[ISOTP_SPEC_FRAME_SINGLE_FD_LEN_IDX] |= session->full_transmission_length & ISOTP_SPEC_FRAME_SINGLE_FD_LEN_MASK;
+                    break;
+                case ISOTP_FORMAT_NORMAL:
+                case ISOTP_FORMAT_LIN:
+                    //  Set the length
+                    frame_data[ISOTP_SPEC_FRAME_SINGLE_LEN_IDX] |= session->full_transmission_length & ISOTP_SPEC_FRAME_SINGLE_LEN_MASK;
+                    break;
             }
 
             //  Setup parameters
@@ -472,18 +487,22 @@ size_t tx_transmitting(isotp_session_t* session, uint8_t* frame_data, const size
             frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_MSB_IDX] &= (uint8_t)~ISOTP_SPEC_FRAME_FIRST_LEN_MSB_MASK;
             frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_LSB_IDX] &= (uint8_t)~ISOTP_SPEC_FRAME_FIRST_LEN_LSB_MASK;
 
-            if(is_fd) {
-                //  Set FD length
-                size_t length = session->full_transmission_length;
-                for (size_t i = ISOTP_SPEC_FRAME_FIRST_FD_LSB_IDX; i >= ISOTP_SPEC_FRAME_FIRST_FD_MSB_IDX; --i) {
-                    frame_data[i] = (uint8_t)(length & 0xFF);
-                    length >>= 8;
-                }
-            }
-            else {
-                //  Set the length
-                frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_MSB_IDX] |= (session->full_transmission_length >> 8) & ISOTP_SPEC_FRAME_FIRST_LEN_MSB_MASK;
-                frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_LSB_IDX] |= session->full_transmission_length & ISOTP_SPEC_FRAME_FIRST_LEN_LSB_MASK;
+            //  Insert length
+            switch(session->protocol_config.frame_format) {
+                case ISOTP_FORMAT_FD:
+                    //  Set FD length
+                    size_t length = session->full_transmission_length;
+                    for (size_t i = ISOTP_SPEC_FRAME_FIRST_FD_LSB_IDX; i >= ISOTP_SPEC_FRAME_FIRST_FD_MSB_IDX; --i) {
+                        frame_data[i] = (uint8_t)(length & 0xFF);
+                        length >>= 8;
+                    }
+                    break;
+                case ISOTP_FORMAT_NORMAL:
+                case ISOTP_FORMAT_LIN:
+                    //  Set the length
+                    frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_MSB_IDX] |= (session->full_transmission_length >> 8) & ISOTP_SPEC_FRAME_FIRST_LEN_MSB_MASK;
+                    frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_LSB_IDX] |= session->full_transmission_length & ISOTP_SPEC_FRAME_FIRST_LEN_LSB_MASK;
+                    break;
             }
 
             //  Setup parameters
@@ -541,10 +560,9 @@ size_t tx_transmitting(isotp_session_t* session, uint8_t* frame_data, const size
     //  Decrement allowed frames counter
     decrement_fc_allowed_frames(session);
 
-    //  Check if we need to enter flow control wait mode
-    if(session->fc_allowed_frames_remaining == 0) {
+    //  Check if we need to enter flow control wait mode (LIN does not have FC)
+    if(session->fc_allowed_frames_remaining == 0 && session->protocol_config.frame_format != ISOTP_FORMAT_LIN) {
         session->state = ISOTP_SESSION_TRANSMITTING_AWAITING_FC;
-        //return 0;
     }
 
     //  Check if done
@@ -566,6 +584,11 @@ size_t tx_recieving(isotp_session_t* session, uint8_t* frame_data, const size_t 
     //  Return value
     if(requested_separation_uS != NULL) { *requested_separation_uS = 0; }
     size_t return_val = 0;
+
+    //  No FC in LIN busses
+    if(session->protocol_config.frame_format == ISOTP_FORMAT_LIN) {
+        return 0;
+    }
 
     //  When recieving, we just need to check if a flow control frame is needed
     if(session->fc_allowed_frames_remaining == 0) {
@@ -611,7 +634,7 @@ size_t tx_recieving(isotp_session_t* session, uint8_t* frame_data, const size_t 
     return return_val;
 }
 
-size_t session_can_tx(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS, const bool is_fd) {
+size_t isotp_session_can_tx(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS) {
     //  Safety
     if(session == NULL || frame_data == NULL) {
         return 0;
@@ -628,7 +651,7 @@ size_t session_can_tx(isotp_session_t* session, uint8_t* frame_data, const size_
             break;
         case ISOTP_SESSION_TRANSMITTING:
             //  Transmitting
-            ret_frame_length = tx_transmitting(session, frame_data, frame_size, requested_separation_uS, is_fd);
+            ret_frame_length = tx_transmitting(session, frame_data, frame_size, requested_separation_uS);
             break;
         case ISOTP_SESSION_RECEIVING:
             //  Receiving
@@ -651,14 +674,6 @@ size_t session_can_tx(isotp_session_t* session, uint8_t* frame_data, const size_
 
     //  No action taken
     return ret_frame_length;
-}
-
-size_t isotp_session_can_tx(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS) {
-    return session_can_tx(session, frame_data, frame_size, requested_separation_uS, false);
-}
-
-size_t isotp_session_can_tx_fd(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS) {
-    return session_can_tx(session, frame_data, frame_size, requested_separation_uS, true);
 }
 
 /*
@@ -708,7 +723,7 @@ size_t isotp_session_send(isotp_session_t* session, const uint8_t* data, const s
     return copy_len;
 }
 
-void isotp_session_init(isotp_session_t* session, void* tx_buffer, size_t tx_len, void* rx_buffer, size_t rx_len) {
+void isotp_session_init(isotp_session_t* session, const isotp_format_t frame_format, void* tx_buffer, size_t tx_len, void* rx_buffer, size_t rx_len) {
     //  Safety
     if(session == NULL) {
         return;
@@ -721,6 +736,7 @@ void isotp_session_init(isotp_session_t* session, void* tx_buffer, size_t tx_len
     session->protocol_config.consecutive_index_end = 15;
     session->protocol_config.fc_default_request_size = 0;   //  request all frames by default
     session->protocol_config.fc_default_separation_time = 0;    //  no delay by default
+    session->protocol_config.frame_format = frame_format;
 
     //  Load buffers
     session->tx_buffer = tx_buffer;
