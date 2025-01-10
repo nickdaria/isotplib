@@ -171,4 +171,4 @@ void isotp_session_can_rx(isotp_session_t* session, const uint8_t* frame_data, c
  * @param frame_length Outputted length of frame
  * @param frame_size Size of frame allowed
  */
-size_t isotp_session_can_tx(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS);
+size_t isotp_session_can_tx(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS, const bool is_fd);

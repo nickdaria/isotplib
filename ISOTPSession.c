@@ -421,7 +421,7 @@ void isotp_session_can_rx(isotp_session_t* session, const uint8_t* data, const s
     CAN Transmission
 
 */
-size_t tx_transmitting(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS) {
+size_t tx_transmitting(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS, bool is_fd) {
     //  Verify we are transmitting
     if(session->state != ISOTP_SESSION_TRANSMITTING) {
         return 0;
@@ -439,9 +439,19 @@ size_t tx_transmitting(isotp_session_t* session, uint8_t* frame_data, const size
             frame_data[ISOTP_SPEC_FRAME_TYPE_IDX] &= ~ISOTP_SPEC_FRAME_TYPE_MASK; // Clear the type bits
             frame_data[ISOTP_SPEC_FRAME_TYPE_IDX] |= (ISOTP_SPEC_FRAME_SINGLE << ISOTP_SPEC_FRAME_TYPE_SHIFT) & ISOTP_SPEC_FRAME_TYPE_MASK;
 
-            //  Set the length
+            //  Clear length bits
             frame_data[ISOTP_SPEC_FRAME_SINGLE_LEN_IDX] &= ~ISOTP_SPEC_FRAME_SINGLE_LEN_MASK; // Clear the length bits
-            frame_data[ISOTP_SPEC_FRAME_SINGLE_LEN_IDX] |= session->full_transmission_length & ISOTP_SPEC_FRAME_SINGLE_LEN_MASK;
+
+            //  Set the length
+            if(is_fd) {
+                //  Set FD length
+                frame_data[ISOTP_SPEC_FRAME_SINGLE_FD_LEN_IDX] &= ~ISOTP_SPEC_FRAME_SINGLE_FD_LEN_MASK; // Clear the length bits
+                frame_data[ISOTP_SPEC_FRAME_SINGLE_FD_LEN_IDX] |= session->full_transmission_length & ISOTP_SPEC_FRAME_SINGLE_FD_LEN_MASK;
+            }
+            else {
+                //  Set the length
+                frame_data[ISOTP_SPEC_FRAME_SINGLE_LEN_IDX] |= session->full_transmission_length & ISOTP_SPEC_FRAME_SINGLE_LEN_MASK;
+            }
 
             //  Setup parameters
             const uint8_t* packet_start = session->tx_buffer;
@@ -458,12 +468,23 @@ size_t tx_transmitting(isotp_session_t* session, uint8_t* frame_data, const size
             frame_data[ISOTP_SPEC_FRAME_TYPE_IDX] &= ~ISOTP_SPEC_FRAME_TYPE_MASK; // Clear the type bits
             frame_data[ISOTP_SPEC_FRAME_TYPE_IDX] |= (ISOTP_SPEC_FRAME_FIRST << ISOTP_SPEC_FRAME_TYPE_SHIFT) & ISOTP_SPEC_FRAME_TYPE_MASK;
 
-            //  Set the length
-            frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_MSB_IDX] &= (uint8_t)~ISOTP_SPEC_FRAME_FIRST_LEN_MSB_MASK; // Clear the length bits
-            frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_MSB_IDX] |= (session->full_transmission_length >> 8) & ISOTP_SPEC_FRAME_FIRST_LEN_MSB_MASK;
+            //  Clear length bits
+            frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_MSB_IDX] &= (uint8_t)~ISOTP_SPEC_FRAME_FIRST_LEN_MSB_MASK;
+            frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_LSB_IDX] &= (uint8_t)~ISOTP_SPEC_FRAME_FIRST_LEN_LSB_MASK;
 
-            frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_LSB_IDX] &= (uint8_t)~ISOTP_SPEC_FRAME_FIRST_LEN_LSB_MASK; // Clear the length bits
-            frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_LSB_IDX] |= session->full_transmission_length & ISOTP_SPEC_FRAME_FIRST_LEN_LSB_MASK;
+            if(is_fd) {
+                //  Set FD length
+                size_t length = session->full_transmission_length;
+                for (size_t i = ISOTP_SPEC_FRAME_FIRST_FD_LSB_IDX; i >= ISOTP_SPEC_FRAME_FIRST_FD_MSB_IDX; --i) {
+                    frame_data[i] = (uint8_t)(length & 0xFF);
+                    length >>= 8;
+                }
+            }
+            else {
+                //  Set the length
+                frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_MSB_IDX] |= (session->full_transmission_length >> 8) & ISOTP_SPEC_FRAME_FIRST_LEN_MSB_MASK;
+                frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_LSB_IDX] |= session->full_transmission_length & ISOTP_SPEC_FRAME_FIRST_LEN_LSB_MASK;
+            }
 
             //  Setup parameters
             const uint8_t* packet_start = session->tx_buffer;
@@ -590,7 +611,7 @@ size_t tx_recieving(isotp_session_t* session, uint8_t* frame_data, const size_t 
     return return_val;
 }
 
-size_t isotp_session_can_tx(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS) {
+size_t isotp_session_can_tx(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS, const bool is_fd) {
     //  Safety
     if(session == NULL || frame_data == NULL) {
         return 0;
@@ -607,7 +628,7 @@ size_t isotp_session_can_tx(isotp_session_t* session, uint8_t* frame_data, const
             break;
         case ISOTP_SESSION_TRANSMITTING:
             //  Transmitting
-            ret_frame_length = tx_transmitting(session, frame_data, frame_size, requested_separation_uS);
+            ret_frame_length = tx_transmitting(session, frame_data, frame_size, requested_separation_uS, is_fd);
             break;
         case ISOTP_SESSION_RECEIVING:
             //  Receiving

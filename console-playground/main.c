@@ -15,14 +15,18 @@ isotp_session_t session;
 uint8_t tx_buffer[128];
 uint8_t rx_buffer[256];
 
+bool is_fd = false;
+
 //  CAN TX buffer
 uint8_t can_tx_buf[8];
+uint8_t can_tx_fd_buf[64];
 
 //  Prototypes for command functions
 void cmd_enter();
 void cmd_help();
 void cmd_hexdata(const uint8_t* buf, const size_t len);
 void cmd_sendTest();
+void cmd_toggleFD();
 
 //  Obtain user input
 size_t user_rx_cmd(uint8_t* buffer, const size_t buffer_size) {
@@ -54,7 +58,13 @@ void usr_process_cmd(const uint8_t* buffer, const size_t length) {
 
     // 'c' command
     if (length == 1 && buffer[0] == 'c') {
-        cmd_sendTest(); // Pass 0 as a placeholder
+        cmd_sendTest();
+        return;
+    }
+
+    // 'f' command
+    if (length == 1 && buffer[0] == 'f') {
+        cmd_toggleFD();
         return;
     }
 
@@ -77,8 +87,14 @@ void usr_process_cmd(const uint8_t* buffer, const size_t length) {
 //  Command: enter
 void cmd_enter() {
     uint32_t requested_separation_time = 0;
-    size_t tx_size = isotp_session_can_tx(&session, can_tx_buf, sizeof(can_tx_buf), &requested_separation_time);
-
+    size_t tx_size;
+    
+    if(is_fd) {
+        tx_size = isotp_session_can_tx(&session, can_tx_fd_buf, sizeof(can_tx_fd_buf), &requested_separation_time, is_fd);
+    }
+    else {
+        tx_size = isotp_session_can_tx(&session, can_tx_buf, sizeof(can_tx_buf), &requested_separation_time, is_fd);
+    }
 
     if(tx_size > 0) {
         //printf("[TX] ");
@@ -99,6 +115,7 @@ void cmd_help() {
     printf("(this tool is made for use with the vscode debugger)\n");
     printf("\th - help\n");
     printf("\tc - start transmission\n");
+    printf("\tf - toggle CAN FD\n");
     printf("\t[enter] - request CAN TX frame\n");
     printf("\t> XXXXXX Enter hex formatted data (no spaces) at the prompt to emulate CAN RX frames\n");
 }
@@ -146,6 +163,11 @@ void cmd_sendTest() {
     } else {
         printf("[ERROR] Failed to read input.\n");
     }
+}
+
+void cmd_toggleFD() {
+    is_fd = !is_fd;
+    printf("CAN FD: %s\n", is_fd ? "Enabled" : "Disabled");
 }
 
 //  Main loop
