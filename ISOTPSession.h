@@ -28,23 +28,71 @@ typedef struct {
 
 // ISOTP session
 typedef struct {
-	//	Raw CAN Callbacks
+	/**
+	 * @brief (required) Callback run when a full transmission is recieved. The data can be accessed from inside the session.
+	 * 
+	 */
+	void (*callback_transmission_rx)(void* context);
+
+	/**
+	 * @brief (required) Catch-all callback for when a frame is recieved outside of expected frames in the current state.
+	 * 
+	 */
+	void (*callback_error_invalid_frame) (void* context, const isotp_spec_frame_type_t rx_frame_type, const uint8_t* msg_data, const size_t msg_length);
+
+	/**
+	 * @brief (required) Callback run when the partner sends an ISO-TP transmission abort. Typically just cancel recieve with `isotp_session_idle` 
+	 * 
+	 */
+	void (*callback_error_partner_aborted_transfer) (void* context, const uint8_t* msg_data, const size_t msg_length);
+
+	/**
+	 * @brief (required) Callback run when the stated size is too large for the RX buffer size. Typically just cancel recieve with `isotp_session_idle` 
+	 * 
+	 */
+	void (*callback_error_transmission_too_large) (void* context, const uint8_t* data, const size_t length, const size_t requested_size);
+
+	/**
+	 * @brief (required) Callback run when a consecutive frame index was out of order (as defined by session.protocol_config). Typically just cancel recieve with `isotp_session_idle` 
+	 * 
+	 */
+	void (*callback_error_consecutive_out_of_order) (void* context, const uint8_t* data, const size_t length, const uint8_t expected_index, const uint8_t recieved_index);
+
+	/**
+	 * @brief (optional) Catch-all callback for when a frame is recieved outside of expected frames in the current state. No action required.
+	 * 
+	 */
+	void (*callback_error_unexpected_frame_type) (void* context, const uint8_t* msg_data, const size_t msg_length);
+
+	/**
+	 * @brief (optional) Callback run when the first frame of a new transmission is recieved. Used by UDS to `isotp_session_send` a denial if not authorized/allowed before recieving the entire message.
+	 * 
+	 */
+	void (*callback_peek_first_frame) (void* context, const uint8_t* data, const size_t length);
+
+	/**
+	 * @brief (optional) Callback run when each valid consecutive frame is recieved
+	 * 
+	 */
+	void (*callback_peek_consecutive_frame) (void* context, const uint8_t* data, const size_t length, const size_t start_idx);
+
+	/**
+	 * @brief (optional) Callback for when a CAN frame is recieved
+	 * 
+	 */
 	void (*callback_can_rx)(void* context, const uint8_t* msg_data, const size_t msg_length);
+
+	/**
+	 * @brief (optional) Callback for when a CAN frame is transmitted
+	 * 
+	 */
 	void (*callback_can_tx)(void* context, const uint8_t* msg_data, const size_t msg_length);
 
-	//	Frame Error Callbacks
-	void (*error_invalid_frame) (void* context, const isotp_spec_frame_type_t rx_frame_type, const uint8_t* msg_data, const size_t msg_length);
-	void (*error_unexpected_frame_type) (void* context, const uint8_t* msg_data, const size_t msg_length);
-	void (*error_partner_aborted_transfer) (void* context, const uint8_t* msg_data, const size_t msg_length);
-
-	//	ISO-TP Error Callbacks
-	void (*error_transmission_too_large) (void* context, const uint8_t* data, const size_t length, const size_t requested_size);
-	void (*error_consecutive_out_of_order) (void* context, const uint8_t* data, const size_t length, const uint8_t expected_index, const uint8_t recieved_index);
-
-	//	ISO-TP Data Callbacks
-	void (*callback_transmission_rx)(void* context);
-	void (*callback_peek_first_frame) (void* context, const uint8_t* data, const size_t length);
-	void (*callback_peek_consecutive_frame) (void* context, const uint8_t* data, const size_t length, const size_t start_idx);
+	/**
+	 * @brief (optional) If desired, the user can allocate memory with `isotp_session_use_rx_buffer` at the start of each new message inside this callback
+	 * 
+	 */
+	void (*callback_mem_assign) (void* context, const size_t indicated_length);
 
 	//	ISO-TP Protocol Configuration
 	isotp_session_protocol_config_t protocol_config;
@@ -79,6 +127,17 @@ typedef struct {
  * @param rx_len 
  */
 void isotp_session_init(isotp_session_t* session, void* tx_buffer, size_t tx_len, void* rx_buffer, size_t rx_len);
+
+/**
+ * @brief Allows for live reconfiguration of the RX buffer. Intended to be used from len_rx callback to allow for dynamic buffer allocation if desired. Only works in idle & memory_config callback states.
+ * 
+ * @param session Session to update
+ * @param rx_buffer New RX buffer to use
+ * @param rx_len New RX buffer length - sizeof(rx_buffer)
+ * @return true Buffer successfully reconfigured
+ * @return false State not valid (not idle or memory_config callback)
+ */
+bool isotp_session_use_rx_buffer(isotp_session_t* session, void* rx_buffer, size_t rx_len);
 
 /**
  * @brief Resets session state to idle

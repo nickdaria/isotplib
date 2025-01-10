@@ -261,11 +261,11 @@ int main() {
     //  Register callbacks
     session.callback_can_rx = (void (*)(void *, const uint8_t *, const size_t))cb_can_rx;
     session.callback_can_tx = (void (*)(void *, const uint8_t *, const size_t))cb_can_tx;
-    session.error_invalid_frame = (void (*)(void *, const isotp_spec_frame_type_t, const uint8_t *, const size_t))cb_error_invalid_frame;
-    session.error_unexpected_frame_type = (void (*)(void *, const uint8_t *, const size_t))cb_error_unexpected_frame_type;
-    session.error_partner_aborted_transfer = (void (*)(void *, const uint8_t *, const size_t))cb_error_partner_aborted_transfer;
-    session.error_transmission_too_large = (void (*)(void *, const uint8_t *, const size_t, const size_t))cb_error_transmission_too_large;
-    session.error_consecutive_out_of_order = (void (*)(void *, const uint8_t *, const size_t, const uint8_t, const uint8_t))cb_error_consecutive_out_of_order;
+    session.callback_error_invalid_frame = (void (*)(void *, const isotp_spec_frame_type_t, const uint8_t *, const size_t))cb_error_invalid_frame;
+    session.callback_error_unexpected_frame_type = (void (*)(void *, const uint8_t *, const size_t))cb_error_unexpected_frame_type;
+    session.callback_error_partner_aborted_transfer = (void (*)(void *, const uint8_t *, const size_t))cb_error_partner_aborted_transfer;
+    session.callback_error_transmission_too_large = (void (*)(void *, const uint8_t *, const size_t, const size_t))cb_error_transmission_too_large;
+    session.callback_error_consecutive_out_of_order = (void (*)(void *, const uint8_t *, const size_t, const uint8_t, const uint8_t))cb_error_consecutive_out_of_order;
     session.callback_transmission_rx = (void (*)(void *))cb_transmission_rx;
     session.callback_peek_first_frame = (void (*)(void *, const uint8_t *, const size_t))cb_peek_first_frame;
     session.callback_peek_consecutive_frame = (void (*)(void *, const uint8_t *, const size_t, const size_t))cb_peek_consecutive_frame;
