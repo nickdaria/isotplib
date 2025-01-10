@@ -611,7 +611,7 @@ size_t tx_recieving(isotp_session_t* session, uint8_t* frame_data, const size_t 
     return return_val;
 }
 
-size_t isotp_session_can_tx(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS, const bool is_fd) {
+size_t session_can_tx(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS, const bool is_fd) {
     //  Safety
     if(session == NULL || frame_data == NULL) {
         return 0;
@@ -651,6 +651,14 @@ size_t isotp_session_can_tx(isotp_session_t* session, uint8_t* frame_data, const
 
     //  No action taken
     return ret_frame_length;
+}
+
+size_t isotp_session_can_tx(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS) {
+    return session_can_tx(session, frame_data, frame_size, requested_separation_uS, false);
+}
+
+size_t isotp_session_can_tx_fd(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS) {
+    return session_can_tx(session, frame_data, frame_size, requested_separation_uS, true);
 }
 
 /*

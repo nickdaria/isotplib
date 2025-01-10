@@ -164,11 +164,22 @@ size_t isotp_session_send(isotp_session_t* session, const uint8_t* data, const s
 void isotp_session_can_rx(isotp_session_t* session, const uint8_t* frame_data, const size_t frame_length);
 
 /**
- * @brief Fetches the next ISO-TP frame to transmit. Returns 0 if none, > 0 if frame (requested uS delay).
+ * @brief Fetches the next ISO-TP frame to transmit
  * 
  * @param session Session to work with
  * @param frame_data Outputted frame data
- * @param frame_length Outputted length of frame
+ * @param frame_length Length of frame buffer
  * @param frame_size Size of frame allowed
  */
-size_t isotp_session_can_tx(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS, const bool is_fd);
+size_t isotp_session_can_tx(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS);
+
+/**
+ * @brief Fetches the next ISO-TP frame to transmit (CAN FD spec)
+ * 
+ * @param session Session to work with
+ * @param frame_data Outputted frame data
+ * @param frame_size Length of frame buffer
+ * @param requested_separation_uS Returns requested delay until next frame transmit in uS
+ * @return size_t Size of message to send (0 = no message)
+ */
+size_t isotp_session_can_tx_fd(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS);

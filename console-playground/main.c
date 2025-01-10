@@ -90,10 +90,10 @@ void cmd_enter() {
     size_t tx_size;
     
     if(is_fd) {
-        tx_size = isotp_session_can_tx(&session, can_tx_fd_buf, sizeof(can_tx_fd_buf), &requested_separation_time, is_fd);
+        tx_size = isotp_session_can_tx_fd(&session, can_tx_fd_buf, sizeof(can_tx_fd_buf), &requested_separation_time);
     }
     else {
-        tx_size = isotp_session_can_tx(&session, can_tx_buf, sizeof(can_tx_buf), &requested_separation_time, is_fd);
+        tx_size = isotp_session_can_tx(&session, can_tx_buf, sizeof(can_tx_buf), &requested_separation_time);
     }
 
     if(tx_size > 0) {
