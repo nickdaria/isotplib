@@ -260,6 +260,13 @@ void handle_flow_control_frame(isotp_session_t* session, const uint8_t* frame_da
         return;
     }
 
+    //  LIN does not use FC
+    if(session->protocol_config.frame_format == ISOTP_FORMAT_LIN) {
+        //  Unexpected frame
+        if(session->callback_error_unexpected_frame_type != NULL) { session->callback_error_unexpected_frame_type(session, frame_data, frame_length); }
+        return;
+    }
+
     //  Read FC flags
     isotp_flow_control_flags_t fc_flags = (isotp_flow_control_flags_t)frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_FC_FLAGS_IDX] & ISOTP_SPEC_FRAME_FLOWCONTROL_FC_FLAGS_MASK;
 
