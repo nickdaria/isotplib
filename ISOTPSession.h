@@ -59,7 +59,7 @@ typedef struct {
 	void (*callback_error_consecutive_out_of_order) (void* context, const uint8_t* data, const size_t length, const uint8_t expected_index, const uint8_t recieved_index);
 
 	/**
-	 * @brief (optional) Catch-all callback for when a frame is recieved outside of expected frames in the current state. No action required.
+	 * @brief (required) Catch-all callback for when a frame is recieved outside of expected frames in the current state. No action required.
 	 * 
 	 */
 	void (*callback_error_unexpected_frame_type) (void* context, const uint8_t* msg_data, const size_t msg_length);
