@@ -1,7 +1,7 @@
-#include "ISOTPSession.h"
 
 #include <string.h>
-#include "ISOTPConversions.h"
+#include "isotp_session.h"
+#include "isotp_conversions.h"
 
 
 //  Helper to decrement fc allowed frames

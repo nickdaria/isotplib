@@ -1,5 +1,5 @@
-#include "ISOTPConversions.h"
-#include "ISOTPConstants.h"
+#include "isotp_conversions.h"
+#include "isotp_specification.h"
 
 uint32_t isotp_spec_fc_separation_time_us(uint8_t req_sep_byte) {
     if (req_sep_byte > ISOTP_SPEC_FC_SEPERATION_TIME_MS_MIN && req_sep_byte <= ISOTP_SPEC_FC_SEPERATION_TIME_MS_MAX) {

@@ -7,7 +7,7 @@ This library solely focuses on implementation of the ISO-TP protocol. As ISO-TP 
 # 🚀 Key Features
 - CAN, CAN-FD, and LIN implementations of ISO-TP
 - Easy-to-use callbacks and error handling
-- Pure C, platform agnostic
+- Pure C, platform agnostic w/ C++/Arduino compatibility
 - Static memory allocation
 - Tight scope - no bloat
 

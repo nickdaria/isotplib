@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "isotpconversions.h": "c"
+        "isotpconversions.h": "c",
+        "isotp_conversions.h": "c"
     }
 }

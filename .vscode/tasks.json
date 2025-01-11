@@ -10,8 +10,8 @@
                 "-o",
                 "${workspaceFolder}/examples/console-playground/console-playground.exe",
                 "${workspaceFolder}/examples/console-playground/main.c",
-                "${workspaceFolder}/ISOTPSession.c",
-                "${workspaceFolder}/ISOTPConversions.c",
+                "${workspaceFolder}/isotp_session.c",
+                "${workspaceFolder}/isotp_conversions.c",
                 "-I",
                 "${workspaceFolder}"
             ],

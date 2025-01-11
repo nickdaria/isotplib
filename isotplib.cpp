@@ -4,9 +4,9 @@
 
 // Include the C headers wrapped in `extern "C"` to prevent C++ name mangling
 extern "C" {
-    #include "ISOTPSession.h"
-    #include "ISOTPConversions.h"
-    #include "ISOTPConstants.h"
+    #include "isotp_session.h"
+    #include "isotp_conversions.h"
+    #include "isotp_specification.h"
     #include "isotplib.h"
 }
 
