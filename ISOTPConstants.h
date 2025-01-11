@@ -13,6 +13,11 @@
 
 */
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // ISO-TP frame types
 typedef enum {
 	ISOTP_SPEC_FRAME_SINGLE = 0x00,
@@ -88,3 +93,7 @@ typedef enum {
 #define ISOTP_SPEC_FC_SEPERATION_TIME_uS_MIN 0xF1
 #define ISOTP_SPEC_FC_SEPERATION_TIME_uS_MAX 0xF9
 #define ISOTP_SPEC_FC_SEPERATION_TIME_uS_SCALAR 100
+
+#ifdef __cplusplus
+}
+#endif

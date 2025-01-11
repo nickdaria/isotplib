@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -182,3 +186,7 @@ void isotp_session_can_rx(isotp_session_t* session, const uint8_t* frame_data, c
  * @param frame_size Size of frame allowed
  */
 size_t isotp_session_can_tx(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS);
+
+#ifdef __cplusplus
+}
+#endif

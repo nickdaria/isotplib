@@ -1,5 +1,10 @@
 #pragma once
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 
 /**
@@ -17,3 +22,7 @@ uint32_t isotp_spec_fc_separation_time_us(uint8_t req_sep_byte);
  * @return uint8_t Separation time byte for valid entry, no separation for invalid entry
  */
 uint8_t isotp_spec_fc_separation_time_byte(uint32_t uS);
+
+#ifdef __cplusplus
+}
+#endif
