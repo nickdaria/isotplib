@@ -2,7 +2,7 @@
 Highly configurable and flexible C library for implementing ISO 15765-2 (Transport Layer) for CAN, CAN-FD, and LIN networks.
 
 > [!IMPORTANT] 
-This library solely focuses on implementation of the ISO-TP protocol. ISO-TP is typically used to implement Unified Diagnostic Services (UDS). This library is designed to work perfectly with [udslib](https://github.com/nickdaria/udslib).
+This library solely focuses on implementation of the ISO-TP protocol. As ISO-TP is often implemented alongside UDS, this library was designed to integrate seamlessly with [udslib](https://github.com/nickdaria/udslib).
 
 # 🚀 Key Features
 - CAN, CAN-FD, and LIN implementations of ISO-TP
