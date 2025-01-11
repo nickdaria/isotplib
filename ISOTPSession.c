@@ -199,11 +199,6 @@ void handle_consecutive_frame(isotp_session_t* session, const uint8_t* frame_dat
     // Get index
     uint8_t index = frame_data[ISOTP_SPEC_FRAME_CONSECUTIVE_INDEX_IDX] & ISOTP_SPEC_FRAME_CONSECUTIVE_INDEX_MASK;
 
-    // Initialize expected index on first consecutive frame
-    if (session->buffer_offset == 0 && session->fc_idx_track_consecutive == 0) {
-        session->fc_idx_track_consecutive = session->protocol_config.consecutive_index_start;
-    }
-
     // Verify the received index matches the expected index
     if (index != session->fc_idx_track_consecutive) {
         if (session->callback_error_consecutive_out_of_order != NULL) {
@@ -214,7 +209,7 @@ void handle_consecutive_frame(isotp_session_t* session, const uint8_t* frame_dat
 
     // Increment expected index and handle rollover
     session->fc_idx_track_consecutive++;
-    if (session->fc_idx_track_consecutive > session->protocol_config.consecutive_index_end) {
+    if (session->fc_idx_track_consecutive >= session->protocol_config.consecutive_index_end) {
         session->fc_idx_track_consecutive = session->protocol_config.consecutive_index_start;
     }
 
@@ -704,7 +699,7 @@ void isotp_session_idle(isotp_session_t* session) {
     session->fc_requested_block_size = session->protocol_config.fc_default_request_size;
     session->buffer_offset = 0;
     session->full_transmission_length = 0;
-    session->fc_idx_track_consecutive = 0;
+    session->fc_idx_track_consecutive = session->protocol_config.consecutive_index_first;
 }
 
 size_t isotp_session_send(isotp_session_t* session, const uint8_t* data, const size_t data_length) {
@@ -742,8 +737,9 @@ void isotp_session_init(isotp_session_t* session, const isotp_format_t frame_for
     //  Default protocol configuration
     session->protocol_config.padding_enabled = true;
     session->protocol_config.padding_byte = 0xFF;
-    session->protocol_config.consecutive_index_start = 0;
-    session->protocol_config.consecutive_index_end = 15;
+    session->protocol_config.consecutive_index_first = ISOTP_SPEC_FRAME_CONSECUTIVE_INDEXING_START;
+    session->protocol_config.consecutive_index_start = ISOTP_SPEC_FRAME_CONSECUTIVE_INDEXING_MIN;
+    session->protocol_config.consecutive_index_end = ISOTP_SPEC_FRAME_CONSECUTIVE_INDEXING_MAX;
     session->protocol_config.fc_default_request_size = 0;   //  request all frames by default
     session->protocol_config.fc_default_separation_time = 0;    //  no delay by default
     session->protocol_config.frame_format = frame_format;

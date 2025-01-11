@@ -33,6 +33,7 @@ typedef struct {
 	bool padding_enabled;					//  Flag indicating if padding should be used
 	uint8_t padding_byte;					//  Byte to use for padding
 
+	uint8_t consecutive_index_first;		//  Expected start index
 	uint8_t consecutive_index_start;		//  Index consecutive frames start at
 	uint8_t consecutive_index_end;			//  Index consecutive frames roll over at
 
