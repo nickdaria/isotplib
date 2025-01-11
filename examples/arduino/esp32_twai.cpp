@@ -3,8 +3,8 @@
 #include "isotplib.h"
 
 // TWAI Configuration
-#define TX_GPIO_NUM GPIO_NUM_21
-#define RX_GPIO_NUM GPIO_NUM_20
+#define TX_GPIO_NUM D10
+#define RX_GPIO_NUM D9
 #define TWAI_BAUD_RATE 500000
 
 // CAN IDs
@@ -59,10 +59,72 @@ void error_unexpected_frame_type_callback(void* context, const uint8_t* msg_data
     isotp_session_idle((isotp_session_t*)context); // Reset session to idle
 }
 
+bool CAN_rx() {
+  // Receive
+  twai_message_t rx_msg;
+  if (twai_receive(&rx_msg, 0) == ESP_OK) {
+      Serial.print("-> 0x");
+      Serial.print(rx_msg.identifier, HEX);
+      Serial.print(" -");
+
+      for (size_t i = 0; i < rx_msg.data_length_code; i++) {
+          Serial.print(" 0x");
+          Serial.print(rx_msg.data[i], HEX);
+      }
+      Serial.println();
+
+      if (rx_msg.identifier == CAN_ID_INCOMING_REQUEST) {
+          isotp_session_can_rx(&can_session, rx_msg.data, rx_msg.data_length_code);
+      }
+
+      return true;
+  }
+
+  return false;
+}
+
+void CAN_tx() {
+  // Send
+  static uint32_t next_tx_time_uS = 0;
+  if (esp_timer_get_time() >= next_tx_time_uS) {
+      twai_message_t tx_msg = {};
+      uint32_t requested_separation_uS = 0;
+
+      size_t uds_tx_len = isotp_session_can_tx(&can_session, tx_msg.data, sizeof(tx_msg.data), &requested_separation_uS);
+      if (uds_tx_len > 0) {
+          tx_msg.identifier = CAN_ID_OUTGOING_RESPONSE;
+          tx_msg.flags = TWAI_MSG_FLAG_NONE;
+          tx_msg.data_length_code = uds_tx_len;
+
+          Serial.print("<- 0x");
+          Serial.print(tx_msg.identifier, HEX);
+          Serial.print(" -");
+          for (size_t i = 0; i < tx_msg.data_length_code; i++) {
+              Serial.print(" 0x");
+              Serial.print(tx_msg.data[i], HEX);
+          }
+          Serial.print(" uS: ");
+          Serial.print(requested_separation_uS);
+          Serial.print(" ");
+
+          esp_err_t tx_err = twai_transmit(&tx_msg, 0);
+          if (tx_err == ESP_OK) {
+            Serial.println("OK");
+          }
+          else {
+            Serial.print("Err: 0x");
+            Serial.println(tx_err, HEX);
+          }
+
+          next_tx_time_uS = esp_timer_get_time() + requested_separation_uS;
+      }
+  }
+}
+
 // CAN Task
 void CAN_task(void* arg) {
     // Configure TWAI driver
-    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(TX_GPIO_NUM, RX_GPIO_NUM, TWAI_MODE_NORMAL);
+    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT((gpio_num_t)TX_GPIO_NUM, (gpio_num_t)RX_GPIO_NUM, TWAI_MODE_NORMAL);
     twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
     twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 
@@ -79,38 +141,16 @@ void CAN_task(void* arg) {
         return;
     }
 
-    twai_message_t rx_msg;
-    uint32_t next_tx_time_uS = 0;
-
     // Infinite loop to read messages from the CAN bus
     while (1) {
-        // Receive
-        if (twai_receive(&rx_msg, pdMS_TO_TICKS(10)) == ESP_OK) {
-            if (rx_msg.identifier == CAN_ID_INCOMING_REQUEST) {
-                isotp_session_can_rx(&can_session, rx_msg.data, rx_msg.data_length_code);
-            }
+        while(1) {
+          if(!CAN_rx()) {
+            break;
+          }
         }
 
-        // Send
-        if (next_tx_time_uS <= esp_timer_get_time()) {
-            twai_message_t tx_msg = {};
-            uint32_t requested_separation_uS = 0;
-
-            size_t uds_tx_len = isotp_session_can_tx(&can_session, tx_msg.data, sizeof(tx_msg.data), &requested_separation_uS);
-            if (uds_tx_len > 0) {
-                tx_msg.identifier = CAN_ID_OUTGOING_RESPONSE;
-                tx_msg.flags = TWAI_MSG_FLAG_NONE;
-                tx_msg.data_length_code = uds_tx_len;
-
-                if (twai_transmit(&tx_msg, pdMS_TO_TICKS(10)) == ESP_OK) {
-                    Serial.println("Message transmitted.");
-                }
-
-                next_tx_time_uS = esp_timer_get_time() + requested_separation_uS;
-            }
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(10));
+        //  Recieve
+        CAN_tx();
     }
 
     // Clean up on task exit
@@ -137,4 +177,5 @@ void setup() {
 
 void loop() {
     // No code needed in the main loop for this example
+    delay(10);
 }
