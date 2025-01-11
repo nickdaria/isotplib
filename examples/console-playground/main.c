@@ -2,7 +2,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
-#include <ISOTP.h>
+#include <isotplib.h>
 
 /*
     Very dirty and ugly console playground for testing ISOTPlib
