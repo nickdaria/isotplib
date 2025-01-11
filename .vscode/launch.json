@@ -5,7 +5,7 @@
             "name": "Debug ISOTP Console Playground",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/console-playground/console-playground.exe",
+            "program": "${workspaceFolder}/examples/console-playground/console-playground.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

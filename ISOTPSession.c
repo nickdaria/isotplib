@@ -32,7 +32,7 @@ void handle_single_frame(isotp_session_t* session, const uint8_t* frame_data, co
 
     //  Safety: ensure header exists (it should)
     if(frame_length < ISOTP_SPEC_FRAME_SINGLE_DATASTART_IDX) {
-        if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, 0xFF, frame_data, frame_length); }
+        if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, (isotp_spec_frame_type_t)0xFF, frame_data, frame_length); }
         return;
     }
 
@@ -74,7 +74,7 @@ void handle_single_frame(isotp_session_t* session, const uint8_t* frame_data, co
 
     //  Safety for length byte being at least length of msg_length
     if(packet_len < session->full_transmission_length) {
-        if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, 0xFF, frame_data, frame_length); }
+        if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, (isotp_spec_frame_type_t)0xFF, frame_data, frame_length); }
         return;
     }
 
@@ -113,7 +113,7 @@ void handle_first_frame(isotp_session_t* session, const uint8_t* frame_data, con
 
     //  Safety: ensure header exists
     if(frame_length < ISOTP_SPEC_FRAME_FIRST_DATASTART_IDX) {
-        if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, 0xFF, frame_data, frame_length); }
+        if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, (isotp_spec_frame_type_t)0xFF, frame_data, frame_length); }
         return;
     }
 
@@ -139,7 +139,7 @@ void handle_first_frame(isotp_session_t* session, const uint8_t* frame_data, con
         //  Length safety
         if (frame_length < ISOTP_SPEC_FRAME_FIRST_FD_DATASTART_IDX) {
             if (session->callback_error_invalid_frame != NULL) {
-                session->callback_error_invalid_frame(session, 0xFD, frame_data, frame_length);
+                session->callback_error_invalid_frame(session, (isotp_spec_frame_type_t)0xFF, frame_data, frame_length);
             }
             return;
         }
@@ -191,7 +191,7 @@ void handle_consecutive_frame(isotp_session_t* session, const uint8_t* frame_dat
     // Safety: ensure header exists
     if (frame_length < ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX) {
         if (session->callback_error_invalid_frame != NULL) { 
-            session->callback_error_invalid_frame(session, 0xFF, frame_data, frame_length); 
+            session->callback_error_invalid_frame(session, (isotp_spec_frame_type_t)0xFF, frame_data, frame_length); 
         }
         return;
     }
@@ -218,21 +218,23 @@ void handle_consecutive_frame(isotp_session_t* session, const uint8_t* frame_dat
         session->fc_idx_track_consecutive = session->protocol_config.consecutive_index_start;
     }
 
-    // Get packet parameters
+    //  Get packet parameters
     size_t packet_len = frame_length - ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX;
     const uint8_t* packet_start = frame_data + ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX;
     size_t bytes_remaining = session->full_transmission_length - session->buffer_offset;
 
-    // Add to buffer
+    //  Add to buffer
     if (packet_len > bytes_remaining) {
         packet_len = bytes_remaining;
     }
-    memcpy(session->rx_buffer + session->buffer_offset, packet_start, packet_len);
 
-    // Update session
+    //  Copy data
+    memcpy((uint8_t*)session->rx_buffer + session->buffer_offset, packet_start, packet_len);
+
+    //  Update session
     session->buffer_offset += packet_len;
 
-    // Peek callback
+    //  Peek callback
     if (session->callback_peek_consecutive_frame != NULL) {
         session->callback_peek_consecutive_frame(session, packet_start, packet_len, session->buffer_offset - packet_len);
     }
@@ -268,7 +270,7 @@ void handle_flow_control_frame(isotp_session_t* session, const uint8_t* frame_da
     }
 
     //  Read FC flags
-    isotp_flow_control_flags_t fc_flags = (isotp_flow_control_flags_t)frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_FC_FLAGS_IDX] & ISOTP_SPEC_FRAME_FLOWCONTROL_FC_FLAGS_MASK;
+    isotp_flow_control_flags_t fc_flags = (isotp_flow_control_flags_t)(frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_FC_FLAGS_IDX] & ISOTP_SPEC_FRAME_FLOWCONTROL_FC_FLAGS_MASK);
 
     //  Read pblock size
     uint8_t block_size = ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_SEND_WITHOUT_FC;    //  Default to no FC
@@ -298,7 +300,7 @@ void handle_flow_control_frame(isotp_session_t* session, const uint8_t* frame_da
             break;
         default:
             //  Invalid FC flags
-            if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, 0xFF, frame_data, frame_length); }
+            if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, (isotp_spec_frame_type_t)0xFF, frame_data, frame_length); }
             return;
     }
 
@@ -408,12 +410,12 @@ void isotp_session_can_rx(isotp_session_t* session, const uint8_t* data, const s
 
     //  ISO-TP Frames must be at least 2 bytes long
     if(length < 2) {
-        if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, 0xFF, data, length); }
+        if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, (isotp_spec_frame_type_t)0xFF, data, length); }
         return;
     }
 
     //  Determine frame type
-    isotp_spec_frame_type_t frame_type = (data[ISOTP_SPEC_FRAME_TYPE_IDX] & ISOTP_SPEC_FRAME_TYPE_MASK) >> ISOTP_SPEC_FRAME_TYPE_SHIFT;
+    isotp_spec_frame_type_t frame_type = (isotp_spec_frame_type_t)((data[ISOTP_SPEC_FRAME_TYPE_IDX] & ISOTP_SPEC_FRAME_TYPE_MASK) >> ISOTP_SPEC_FRAME_TYPE_SHIFT);
     
     //  Process frame based on session state
     switch(session->state) {
@@ -476,7 +478,7 @@ size_t tx_transmitting(isotp_session_t* session, uint8_t* frame_data, const size
             }
 
             //  Setup parameters
-            const uint8_t* packet_start = session->tx_buffer;
+            const uint8_t* packet_start = (uint8_t*)session->tx_buffer;
             const size_t packet_len = session->full_transmission_length;
 
             //  Copy data
@@ -495,25 +497,26 @@ size_t tx_transmitting(isotp_session_t* session, uint8_t* frame_data, const size
             frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_LSB_IDX] &= (uint8_t)~ISOTP_SPEC_FRAME_FIRST_LEN_LSB_MASK;
 
             //  Insert length
-            switch(session->protocol_config.frame_format) {
-                case ISOTP_FORMAT_FD:
-                    //  Set FD length
-                    size_t length = session->full_transmission_length;
-                    for (size_t i = ISOTP_SPEC_FRAME_FIRST_FD_LSB_IDX; i >= ISOTP_SPEC_FRAME_FIRST_FD_MSB_IDX; --i) {
-                        frame_data[i] = (uint8_t)(length & 0xFF);
-                        length >>= 8;
-                    }
-                    break;
-                case ISOTP_FORMAT_NORMAL:
-                case ISOTP_FORMAT_LIN:
-                    //  Set the length
-                    frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_MSB_IDX] |= (session->full_transmission_length >> 8) & ISOTP_SPEC_FRAME_FIRST_LEN_MSB_MASK;
-                    frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_LSB_IDX] |= session->full_transmission_length & ISOTP_SPEC_FRAME_FIRST_LEN_LSB_MASK;
-                    break;
+            switch (session->protocol_config.frame_format) {
+            case ISOTP_FORMAT_FD: {
+                //  Set FD length
+                size_t length = session->full_transmission_length;
+                for (size_t i = ISOTP_SPEC_FRAME_FIRST_FD_MSB_IDX; i <= ISOTP_SPEC_FRAME_FIRST_FD_LSB_IDX; ++i) {
+                    frame_data[i] = (uint8_t)(length & 0xFF);
+                    length >>= 8;
+                }
+                break;
             }
+            case ISOTP_FORMAT_NORMAL:
+            case ISOTP_FORMAT_LIN:
+                //  Set the length
+                frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_MSB_IDX] |= (session->full_transmission_length >> 8) & ISOTP_SPEC_FRAME_FIRST_LEN_MSB_MASK;
+                frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_LSB_IDX] |= session->full_transmission_length & ISOTP_SPEC_FRAME_FIRST_LEN_LSB_MASK;
+                break;
+        }
 
             //  Setup parameters
-            const uint8_t* packet_start = session->tx_buffer;
+            const uint8_t* packet_start = (uint8_t*)session->tx_buffer;
             const size_t packet_len = frame_size - ISOTP_SPEC_FRAME_FIRST_DATASTART_IDX;
 
             //  Copy data
@@ -536,7 +539,7 @@ size_t tx_transmitting(isotp_session_t* session, uint8_t* frame_data, const size
         frame_data[ISOTP_SPEC_FRAME_CONSECUTIVE_INDEX_IDX] |= session->fc_idx_track_consecutive & ISOTP_SPEC_FRAME_CONSECUTIVE_INDEX_MASK;
 
         //  Setup parameters
-        const uint8_t* packet_start = session->tx_buffer + session->buffer_offset;
+        const uint8_t* packet_start = (uint8_t*)session->tx_buffer + session->buffer_offset;
         const size_t bytes_remaining = session->full_transmission_length - session->buffer_offset;
 
         //  Calculate packet length

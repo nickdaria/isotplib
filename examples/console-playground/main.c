@@ -2,7 +2,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
-#include "../ISOTP.h"
+#include <ISOTP.h>
 
 /*
     Very dirty and ugly console playground for testing ISOTPlib
@@ -116,7 +116,7 @@ void cmd_help() {
     printf("(this tool is made for use with the vscode debugger)\n");
     printf("\th - help\n");
     printf("\tc - start transmission\n");
-    printf("\tf - toggle CAN FD\n");
+    printf("\tf - toggle type (Normal/FD/LIN)\n");
     printf("\t[enter] - request CAN TX frame\n");
     printf("\t> XXXXXX Enter hex formatted data (no spaces) at the prompt to emulate CAN RX frames\n");
 }

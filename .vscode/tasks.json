@@ -8,8 +8,8 @@
             "args": [
                 "-g", // Include debugging symbols
                 "-o",
-                "${workspaceFolder}/console-playground/console-playground.exe",
-                "${workspaceFolder}/console-playground/main.c",
+                "${workspaceFolder}/examples/console-playground/console-playground.exe",
+                "${workspaceFolder}/examples/console-playground/main.c",
                 "${workspaceFolder}/ISOTPSession.c",
                 "${workspaceFolder}/ISOTPConversions.c",
                 "-I",
@@ -25,7 +25,7 @@
         {
             "label": "Run ISOTP Console Playground",
             "type": "shell",
-            "command": "${workspaceFolder}/console-playground/console-playground.exe",
+            "command": "${workspaceFolder}/examples/console-playground/console-playground.exe",
             "group": {
                 "kind": "test",
                 "isDefault": true
