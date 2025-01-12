@@ -19,9 +19,26 @@ typedef enum {
 } isotp_session_state_t;
 
 typedef enum {
-	ISOTP_FORMAT_NORMAL,	//	CAN 2.0 	ISO 15765-2
-	ISOTP_FORMAT_FD,		//	CAN FD 		ISO 15765-2
-	ISOTP_FORMAT_LIN,		//	LIN 		ISO 17987-2
+	/*
+		CAN 2.0 	ISO 15765-2
+	*/
+	ISOTP_FORMAT_NORMAL = 0,
+
+	/*
+		CAN FD 		ISO 15765-2
+		* Allows ISO-TP FD size specification
+	*/
+	ISOTP_FORMAT_FD = 1,
+
+	/*
+		LIN 		ISO 17987-2
+		* Disables flow control
+	*/
+	ISOTP_FORMAT_LIN = 2,
+
+	//	TODO: FlexRay?
+
+	//	Index count
 	ISOTP_FORMAT_cnt,
 } isotp_format_t;
 
