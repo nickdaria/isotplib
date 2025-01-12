@@ -14,7 +14,7 @@ When I set out on my latest vehicle module project, I could not find any ISOTP l
 # 🚀 Key Features
 - CAN, CAN-FD, and LIN implementations of ISO-TP
 - Easy-to-use callbacks and error handling
-- Pure C, platform agnostic w/ C++/Arduino compatibility
+- Pure C, platform agnostic with C++/Arduino compatibility
 - Static memory allocation
 - Tight scope - no bloat
 
