@@ -481,6 +481,9 @@ size_t tx_transmitting(isotp_session_t* session, uint8_t* frame_data, const size
 
             //  Send frame data
             ret_frame_size = packet_len + ISOTP_SPEC_FRAME_SINGLE_DATASTART_IDX;
+
+            //  Conclude transmission
+            isotp_session_idle(session);
         }
         else {
             //  First frame
@@ -494,21 +497,21 @@ size_t tx_transmitting(isotp_session_t* session, uint8_t* frame_data, const size
             //  Insert length
             switch (session->protocol_config.frame_format) {
             case ISOTP_FORMAT_FD: {
-                //  Set FD length
-                size_t length = session->full_transmission_length;
-                for (size_t i = ISOTP_SPEC_FRAME_FIRST_FD_MSB_IDX; i <= ISOTP_SPEC_FRAME_FIRST_FD_LSB_IDX; ++i) {
-                    frame_data[i] = (uint8_t)(length & 0xFF);
-                    length >>= 8;
+                    //  Set FD length
+                    size_t length = session->full_transmission_length;
+                    for (size_t i = ISOTP_SPEC_FRAME_FIRST_FD_MSB_IDX; i <= ISOTP_SPEC_FRAME_FIRST_FD_LSB_IDX; ++i) {
+                        frame_data[i] = (uint8_t)(length & 0xFF);
+                        length >>= 8;
+                    }
+                    break;
                 }
-                break;
+                case ISOTP_FORMAT_NORMAL:
+                case ISOTP_FORMAT_LIN:
+                    //  Set the length
+                    frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_MSB_IDX] |= (session->full_transmission_length >> 8) & ISOTP_SPEC_FRAME_FIRST_LEN_MSB_MASK;
+                    frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_LSB_IDX] |= session->full_transmission_length & ISOTP_SPEC_FRAME_FIRST_LEN_LSB_MASK;
+                    break;
             }
-            case ISOTP_FORMAT_NORMAL:
-            case ISOTP_FORMAT_LIN:
-                //  Set the length
-                frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_MSB_IDX] |= (session->full_transmission_length >> 8) & ISOTP_SPEC_FRAME_FIRST_LEN_MSB_MASK;
-                frame_data[ISOTP_SPEC_FRAME_FIRST_LEN_LSB_IDX] |= session->full_transmission_length & ISOTP_SPEC_FRAME_FIRST_LEN_LSB_MASK;
-                break;
-        }
 
             //  Setup parameters
             const uint8_t* packet_start = (uint8_t*)session->tx_buffer;
