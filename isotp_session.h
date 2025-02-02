@@ -37,9 +37,6 @@ typedef enum {
 	ISOTP_FORMAT_LIN = 2,
 
 	//	TODO: FlexRay?
-
-	//	Index count
-	ISOTP_FORMAT_cnt,
 } isotp_format_t;
 
 typedef struct {
