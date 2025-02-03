@@ -209,7 +209,7 @@ void handle_consecutive_frame(isotp_session_t* session, const uint8_t* frame_dat
 
     // Increment expected index and handle rollover
     session->fc_idx_track_consecutive++;
-    if (session->fc_idx_track_consecutive >= session->protocol_config.consecutive_index_end) {
+    if (session->fc_idx_track_consecutive > session->protocol_config.consecutive_index_end) {
         session->fc_idx_track_consecutive = session->protocol_config.consecutive_index_start;
     }
 
