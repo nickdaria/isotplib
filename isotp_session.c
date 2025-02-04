@@ -648,6 +648,9 @@ size_t isotp_session_can_tx(isotp_session_t* session, uint8_t* frame_data, const
         return 0;
     }
 
+    //  Default to no separation
+    if(requested_separation_uS != NULL) { *requested_separation_uS = 0; }
+
     //  Determine action based on session state
     uint32_t ret_frame_length = 0;
     switch(session->state) {
@@ -719,7 +722,13 @@ size_t isotp_session_send(isotp_session_t* session, const uint8_t* data, const s
     if(copy_len > session->tx_len) {
         copy_len = session->tx_len;
     }
-    memcpy(session->tx_buffer, data, copy_len);
+    
+    //  If user placed data into session tx, use safe memmove, otherwise use faster memcpy
+    if (data != session->tx_buffer) {
+        memcpy(session->tx_buffer, data, copy_len);
+    } else {
+        memmove(session->tx_buffer, data, copy_len);
+    }
 
     //  Set transmit length
     session->full_transmission_length = copy_len;
