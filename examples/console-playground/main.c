@@ -169,18 +169,23 @@ void cmd_sendTest() {
 void cmd_toggleFormat() {
     //  Loop through formats
     session.protocol_config.frame_format++;
-    if(session.protocol_config.frame_format >= ISOTP_FORMAT_cnt) { session.protocol_config.frame_format = ISOTP_FORMAT_NORMAL; }
     
-    printf("Format: ");
     switch(session.protocol_config.frame_format) {
         case ISOTP_FORMAT_FD:
+            printf("Format: ");
             printf("CAN FD\n");
             break;
         case ISOTP_FORMAT_NORMAL:
+            printf("Format: ");
             printf("CAN Normal\n");
             break;
         case ISOTP_FORMAT_LIN:
+            printf("Format: ");
             printf("LIN\n");
+            break;
+        default:
+            session.protocol_config.frame_format = -1;
+            cmd_toggleFormat();
             break;
     }
 }

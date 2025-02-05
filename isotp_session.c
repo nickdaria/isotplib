@@ -33,6 +33,8 @@ void handle_single_frame(isotp_session_t* session, const uint8_t* frame_data, co
     //  Safety: ensure header exists (it should)
     if(frame_length < ISOTP_SPEC_FRAME_SINGLE_DATASTART_IDX) {
         if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, (isotp_spec_frame_type_t)0xFF, frame_data, frame_length); }
+        else { isotp_session_idle(session); }
+
         return;
     }
 
@@ -50,12 +52,16 @@ void handle_single_frame(isotp_session_t* session, const uint8_t* frame_data, co
         //  FD only works when protocol settings allow
         if(session->protocol_config.frame_format != ISOTP_FORMAT_FD) {
             if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, ISOTP_SPEC_FRAME_SINGLE, frame_data, frame_length); }
+            else { isotp_session_idle(session); }
+
             return;
         }
 
         //  Length safety
         if(frame_length < ISOTP_SPEC_FRAME_SINGLE_FD_DATASTART_IDX) {
             if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, ISOTP_SPEC_FRAME_SINGLE, frame_data, frame_length); }
+            else { isotp_session_idle(session); }
+            
             return;
         }
 
@@ -75,12 +81,16 @@ void handle_single_frame(isotp_session_t* session, const uint8_t* frame_data, co
     //  Safety for length byte being at least length of msg_length
     if(packet_len < session->full_transmission_length) {
         if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, (isotp_spec_frame_type_t)0xFF, frame_data, frame_length); }
+        else { isotp_session_idle(session); }
+        
         return;
     }
 
     //  Safety for buffer being large enough
     if(session->full_transmission_length > session->rx_len) {
         if(session->callback_error_transmission_too_large != NULL) { session->callback_error_transmission_too_large(session, packet_start, packet_len, session->full_transmission_length); }
+        else { isotp_session_idle(session); }
+        
         return;
     }
 
@@ -114,6 +124,8 @@ void handle_first_frame(isotp_session_t* session, const uint8_t* frame_data, con
     //  Safety: ensure header exists
     if(frame_length < ISOTP_SPEC_FRAME_FIRST_DATASTART_IDX) {
         if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, (isotp_spec_frame_type_t)0xFF, frame_data, frame_length); }
+        else { isotp_session_idle(session); }
+        
         return;
     }
 
@@ -133,14 +145,16 @@ void handle_first_frame(isotp_session_t* session, const uint8_t* frame_data, con
         //  FD only works when protocol settings allow
         if(session->protocol_config.frame_format != ISOTP_FORMAT_FD) {
             if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, ISOTP_SPEC_FRAME_SINGLE, frame_data, frame_length); }
+            else { isotp_session_idle(session); }
+            
             return;
         }
 
         //  Length safety
         if (frame_length < ISOTP_SPEC_FRAME_FIRST_FD_DATASTART_IDX) {
-            if (session->callback_error_invalid_frame != NULL) {
-                session->callback_error_invalid_frame(session, (isotp_spec_frame_type_t)0xFF, frame_data, frame_length);
-            }
+            if (session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, (isotp_spec_frame_type_t)0xFF, frame_data, frame_length); }
+            else { isotp_session_idle(session); }
+
             return;
         }
 
@@ -160,6 +174,8 @@ void handle_first_frame(isotp_session_t* session, const uint8_t* frame_data, con
     //  Safety for buffer being large enough
     if(session->full_transmission_length > session->rx_len) {
         if(session->callback_error_transmission_too_large != NULL) { session->callback_error_transmission_too_large(session, packet_start, packet_len, session->full_transmission_length); }
+        else { isotp_session_idle(session); }
+        
         return;
     }
 
@@ -182,17 +198,17 @@ void handle_consecutive_frame(isotp_session_t* session, const uint8_t* frame_dat
 
     // Safety: session state
     if (session->state != ISOTP_SESSION_RECEIVING) {
-        if (session->callback_error_unexpected_frame_type != NULL) { 
-            session->callback_error_unexpected_frame_type(session, frame_data, frame_length); 
-        }
+        if (session->callback_error_unexpected_frame_type != NULL) { session->callback_error_unexpected_frame_type(session, frame_data, frame_length); }
+        else { isotp_session_idle(session); }
+
         return;
     }
 
     // Safety: ensure header exists
     if (frame_length < ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX) {
-        if (session->callback_error_invalid_frame != NULL) { 
-            session->callback_error_invalid_frame(session, (isotp_spec_frame_type_t)0xFF, frame_data, frame_length); 
-        }
+        if (session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, (isotp_spec_frame_type_t)0xFF, frame_data, frame_length); }
+        else { isotp_session_idle(session); }
+        
         return;
     }
 
@@ -201,9 +217,8 @@ void handle_consecutive_frame(isotp_session_t* session, const uint8_t* frame_dat
 
     // Verify the received index matches the expected index
     if (index != session->fc_idx_track_consecutive) {
-        if (session->callback_error_consecutive_out_of_order != NULL) {
-            session->callback_error_consecutive_out_of_order(session, frame_data, frame_length, session->fc_idx_track_consecutive, index);
-        }
+        if (session->callback_error_consecutive_out_of_order != NULL) { session->callback_error_consecutive_out_of_order(session, frame_data, frame_length, session->fc_idx_track_consecutive, index); }
+        else { isotp_session_idle(session); }
         return;
     }
 
@@ -254,6 +269,8 @@ void handle_flow_control_frame(isotp_session_t* session, const uint8_t* frame_da
     //  Safety: session state
     if(session->state != ISOTP_SESSION_TRANSMITTING_AWAITING_FC && session->state != ISOTP_SESSION_TRANSMITTING) {
         if(session->callback_error_unexpected_frame_type != NULL) { session->callback_error_unexpected_frame_type(session, frame_data, frame_length); }
+        else { isotp_session_idle(session); }
+        
         return;
     }
 
@@ -261,6 +278,8 @@ void handle_flow_control_frame(isotp_session_t* session, const uint8_t* frame_da
     if(session->protocol_config.frame_format == ISOTP_FORMAT_LIN) {
         //  Unexpected frame
         if(session->callback_error_unexpected_frame_type != NULL) { session->callback_error_unexpected_frame_type(session, frame_data, frame_length); }
+        else { isotp_session_idle(session); }
+        
         return;
     }
 
@@ -292,10 +311,14 @@ void handle_flow_control_frame(isotp_session_t* session, const uint8_t* frame_da
         case ISOTP_SPEC_FC_FLAG_OVERFLOW_ABORT:
             //  Abort transmission
             if(session->callback_error_partner_aborted_transfer != NULL) { session->callback_error_partner_aborted_transfer(session, frame_data, frame_length); }
+            else { isotp_session_idle(session); }
+            
             break;
         default:
             //  Invalid FC flags
             if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, (isotp_spec_frame_type_t)0xFF, frame_data, frame_length); }
+            else { isotp_session_idle(session); }
+            
             return;
     }
 
@@ -332,10 +355,14 @@ void rx_idle(const isotp_spec_frame_type_t frame_type, isotp_session_t* session,
         case ISOTP_SPEC_FRAME_FLOW_CONTROL:
             //  Unexpected frame
             if(session->callback_error_unexpected_frame_type != NULL) { session->callback_error_unexpected_frame_type(session, frame_data, frame_length); }
+            else { isotp_session_idle(session); }
+            
             break;
         default:
             //  Invalid frame type
             if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, frame_type, frame_data, frame_length); }
+            else { isotp_session_idle(session); }
+           
             break;
     }
 }
@@ -355,6 +382,8 @@ void rx_transmitting(const isotp_spec_frame_type_t frame_type, isotp_session_t* 
         case ISOTP_SPEC_FRAME_CONSECUTIVE:
             //  Unexpected frame
             if(session->callback_error_unexpected_frame_type != NULL) { session->callback_error_unexpected_frame_type(session, frame_data, frame_length); }
+            else { isotp_session_idle(session); }
+            
             break;
         case ISOTP_SPEC_FRAME_FLOW_CONTROL:
             //  [IDEAL] Flow control frame received
@@ -363,6 +392,8 @@ void rx_transmitting(const isotp_spec_frame_type_t frame_type, isotp_session_t* 
         default:
             //  Invalid frame type
             if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, frame_type, frame_data, frame_length); }
+            else { isotp_session_idle(session); }
+            
             break;
     }
 }
@@ -384,10 +415,14 @@ void rx_recieving(const isotp_spec_frame_type_t frame_type, isotp_session_t* ses
         case ISOTP_SPEC_FRAME_FLOW_CONTROL:
             //  Unexpected frame
             if(session->callback_error_unexpected_frame_type != NULL) { session->callback_error_unexpected_frame_type(session, frame_data, frame_length); }
+            else { isotp_session_idle(session); }
+            
             break;
         default:
             //  Invalid frame type
             if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, frame_type, frame_data, frame_length); }
+            else { isotp_session_idle(session); }
+            
             break;
     }
 }
@@ -406,6 +441,8 @@ void isotp_session_can_rx(isotp_session_t* session, const uint8_t* data, const s
     //  ISO-TP Frames must be at least 2 bytes long
     if(length < 2) {
         if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, (isotp_spec_frame_type_t)0xFF, data, length); }
+        else { isotp_session_idle(session); }
+        
         return;
     }
 
