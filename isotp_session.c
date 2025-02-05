@@ -106,6 +106,7 @@ void handle_single_frame(isotp_session_t* session, const uint8_t* frame_data, co
     
     //  Callback
     if(session->callback_transmission_rx != NULL) { session->callback_transmission_rx(session); }
+    else { isotp_session_idle(session); }
     //if(session->state == ISOTP_SESSION_RECEIVED) { isotp_session_idle(session); }
 }
 
