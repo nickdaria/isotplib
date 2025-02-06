@@ -517,8 +517,11 @@ size_t tx_transmitting(isotp_session_t* session, uint8_t* frame_data, const size
                         //  Update parameters
                         frame_start = frame_data + ISOTP_SPEC_FRAME_SINGLE_FD_DATASTART_IDX;
                         header_size = ISOTP_SPEC_FRAME_SINGLE_FD_DATASTART_IDX;
+                        break;
                     }
-                    break;
+                    else {
+                        //  Fall through to regular behavior
+                    }
                 case ISOTP_FORMAT_LIN:
                 case ISOTP_FORMAT_NORMAL:
                     //  Insert length
