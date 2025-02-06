@@ -41,7 +41,10 @@ typedef enum {
 
 typedef struct {
 	//	Frame Format
-	isotp_format_t frame_format;					//	ISO-TP frame frame_format
+	isotp_format_t frame_format;			//	ISO-TP frame frame_format
+
+	//	FD
+	bool fd_header_force;					//	Forces CAN FD headers even when data is small enough to use the non-FD frames
 
 	//	Padding
 	bool padding_enabled;					//  Flag indicating if padding should be used
