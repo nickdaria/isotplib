@@ -708,13 +708,14 @@ size_t tx_recieving(isotp_session_t* session, uint8_t* frame_data, const size_t 
 }
 
 size_t isotp_session_can_tx(isotp_session_t* session, uint8_t* frame_data, const size_t frame_size, uint32_t* requested_separation_uS) {
+    //  Default to no separation
+    if(requested_separation_uS != NULL) { *requested_separation_uS = 0; }
+
     //  Safety
     if(session == NULL || frame_data == NULL) {
         return 0;
     }
 
-    //  Default to no separation
-    if(requested_separation_uS != NULL) { *requested_separation_uS = 0; }
 
     //  Determine action based on session state
     uint32_t ret_frame_length = 0;
