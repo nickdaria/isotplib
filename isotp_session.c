@@ -521,6 +521,7 @@ size_t tx_transmitting(isotp_session_t* session, uint8_t* frame_data, const size
                     }
                     else {
                         //  Fall through to regular behavior
+                        __attribute__((fallthrough));
                     }
                 case ISOTP_FORMAT_LIN:
                 case ISOTP_FORMAT_NORMAL:
@@ -572,6 +573,9 @@ size_t tx_transmitting(isotp_session_t* session, uint8_t* frame_data, const size
                         //  Update header length
                         header_len = ISOTP_SPEC_FRAME_FIRST_FD_DATASTART_IDX;
                         break;
+                    }
+                    else {
+                        __attribute__((fallthrough));
                     }
                 }
                 case ISOTP_FORMAT_NORMAL:
