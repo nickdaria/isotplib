@@ -228,6 +228,9 @@ void handle_consecutive_frame(isotp_session_t* session, const uint8_t* frame_dat
         session->fc_idx_track_consecutive = session->protocol_config.consecutive_index_start;
     }
 
+    //  Decrement flow control counter
+    decrement_fc_allowed_frames(session);
+
     //  Get packet parameters
     size_t packet_len = frame_length - ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX;
     const uint8_t* packet_start = frame_data + ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX;
@@ -293,13 +296,13 @@ void handle_flow_control_frame(isotp_session_t* session, const uint8_t* frame_da
 
     //  Read pblock size
     uint8_t block_size = ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_SEND_WITHOUT_FC;    //  Default to no FC
-    if(frame_length >= ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_IDX + 1) {
+    if(frame_length > ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_IDX + 1) {
         block_size = frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_IDX] & ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_MASK;
     }
 
     //  Read separation time
     uint32_t separation_time = 0;
-    if(frame_length >= ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_IDX + 1) {
+    if(frame_length > ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_IDX + 1) {
         separation_time = isotp_spec_fc_separation_time_us(frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_IDX] & ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_MASK);
     }
 
@@ -446,8 +449,8 @@ void isotp_session_can_rx(isotp_session_t* session, const uint8_t* data, const s
     //  Callback
     if(session->callback_can_rx != NULL) { session->callback_can_rx(session, data, length); }
 
-    //  ISO-TP Frames must be at least 2 bytes long
-    if(length < 2) {
+    //  ISO-TP Frames must be at least a byte
+    if(length < 1) {
         if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, (isotp_spec_frame_type_t)0xFF, data, length); }
         else { isotp_session_idle(session); }
         
@@ -463,8 +466,6 @@ void isotp_session_can_rx(isotp_session_t* session, const uint8_t* data, const s
             rx_idle(frame_type, session, data, length);
             break;
         case ISOTP_SESSION_TRANSMITTING:
-            rx_transmitting(frame_type, session, data, length);
-            break;
         case ISOTP_SESSION_TRANSMITTING_AWAITING_FC:
             rx_transmitting(frame_type, session, data, length);
             break;
@@ -698,7 +699,16 @@ size_t tx_recieving(isotp_session_t* session, uint8_t* frame_data, const size_t 
         frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_FC_FLAGS_IDX] |= fc_flag & ISOTP_SPEC_FRAME_FLOWCONTROL_FC_FLAGS_MASK;
 
         // Set the block size
-        uint8_t block_size_send = session->fc_allowed_frames_remaining == UINT16_MAX ? ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_SEND_WITHOUT_FC : session->fc_allowed_frames_remaining;
+        uint8_t block_size_send = session->fc_allowed_frames_remaining;
+
+        //  Less frames remain than block size
+        //  TODO: implement somehow
+
+        //  Unlimited block size
+        if(session->fc_allowed_frames_remaining == UINT16_MAX) {
+            block_size_send = ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_SEND_WITHOUT_FC;
+        }
+
         frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_IDX] = block_size_send & ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_MASK;
 
         //  Set the seperation time
