@@ -283,6 +283,11 @@ void handle_flow_control_frame(isotp_session_t* session, const uint8_t* frame_da
         return;
     }
 
+    //  Peek callback
+    if (session->callback_peek_flow_control_frame != NULL) {
+        session->callback_peek_flow_control_frame(session);
+    }
+
     //  Read FC flags
     isotp_flow_control_flags_t fc_flags = (isotp_flow_control_flags_t)(frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_FC_FLAGS_IDX] & ISOTP_SPEC_FRAME_FLOWCONTROL_FC_FLAGS_MASK);
 
@@ -437,6 +442,9 @@ void isotp_session_can_rx(isotp_session_t* session, const uint8_t* data, const s
     if(session == NULL || data == NULL || length == 0) {
         return;
     }
+    
+    //  Callback
+    if(session->callback_can_rx != NULL) { session->callback_can_rx(session, data, length); }
 
     //  ISO-TP Frames must be at least 2 bytes long
     if(length < 2) {
@@ -839,6 +847,7 @@ void isotp_session_init(isotp_session_t* session, const isotp_format_t frame_for
     session->callback_mem_assign = NULL;
     session->callback_peek_first_frame = NULL;
     session->callback_peek_consecutive_frame = NULL;
+    session->callback_peek_flow_control_frame = NULL;
     session->callback_error_invalid_frame = NULL;
     session->callback_error_transmission_too_large = NULL;
     session->callback_error_partner_aborted_transfer = NULL;

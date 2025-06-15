@@ -107,6 +107,12 @@ typedef struct {
 	 * 
 	 */
 	void (*callback_peek_consecutive_frame) (void* context, const uint8_t* data, const size_t length, const size_t start_idx);
+	
+	/**
+	 * @brief (optional) Callback run when each valid flow control frame is recieved
+	 * 
+	 */
+	void (*callback_peek_flow_control_frame) (void* context);
 
 	/**
 	 * @brief (optional) Callback for when a CAN frame is recieved
