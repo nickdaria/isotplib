@@ -564,21 +564,21 @@ size_t tx_transmitting(isotp_session_t* session, uint8_t* frame_data, const size
             //  Setup parameters
             uint8_t* frame_start = frame_data + ISOTP_SPEC_FRAME_FIRST_DATASTART_IDX;
             const uint8_t* packet_start = (uint8_t*)session->tx_buffer;
-            const size_t packet_len = frame_size - ISOTP_SPEC_FRAME_FIRST_DATASTART_IDX;
+            size_t packet_len = frame_size - ISOTP_SPEC_FRAME_FIRST_DATASTART_IDX;
             size_t header_len = ISOTP_SPEC_FRAME_FIRST_DATASTART_IDX;
 
             //  Insert length
             switch (session->protocol_config.frame_format) {
-            case ISOTP_FORMAT_FD: {
+                case ISOTP_FORMAT_FD: {
                     //  Set FD length
                     if(session->protocol_config.fd_header_force || session->full_transmission_length >= ISOTP_SPEC_FRAME_FIRST_FD_ENABLE_LEN) {
-                        size_t length = session->full_transmission_length;
                         for (size_t i = ISOTP_SPEC_FRAME_FIRST_FD_MSB_IDX; i <= ISOTP_SPEC_FRAME_FIRST_FD_LSB_IDX; ++i) {
-                            frame_data[i] = (uint8_t)(length & 0xFF);
-                            length >>= 8;
+                            frame_data[i] = session->full_transmission_length >> (8 * (ISOTP_SPEC_FRAME_FIRST_FD_LSB_IDX - i));
                         }
 
-                        //  Update header length
+                        //  Update parameters
+                        frame_start = frame_data + ISOTP_SPEC_FRAME_FIRST_FD_DATASTART_IDX;
+                        packet_len = frame_size - ISOTP_SPEC_FRAME_FIRST_FD_DATASTART_IDX;
                         header_len = ISOTP_SPEC_FRAME_FIRST_FD_DATASTART_IDX;
                         break;
                     }
