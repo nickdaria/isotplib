@@ -90,7 +90,15 @@ void handle_single_frame(isotp_session_t* session, const uint8_t* frame_data, co
     if(session->full_transmission_length > session->rx_len) {
         if(session->callback_error_transmission_too_large != NULL) { session->callback_error_transmission_too_large(session, packet_start, packet_len, session->full_transmission_length); }
         else { isotp_session_idle(session); }
-        
+
+        return;
+    }
+
+    //  Safety: Ensure we have enough data in the frame for the indicated length
+    if(session->full_transmission_length > packet_len) {
+        if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, ISOTP_SPEC_FRAME_SINGLE, frame_data, frame_length); }
+        else { isotp_session_idle(session); }
+
         return;
     }
 
@@ -175,7 +183,15 @@ void handle_first_frame(isotp_session_t* session, const uint8_t* frame_data, con
     if(session->full_transmission_length > session->rx_len) {
         if(session->callback_error_transmission_too_large != NULL) { session->callback_error_transmission_too_large(session, packet_start, packet_len, session->full_transmission_length); }
         else { isotp_session_idle(session); }
-        
+
+        return;
+    }
+
+    //  Safety: Ensure packet_len doesn't exceed rx buffer size
+    if(packet_len > session->rx_len) {
+        if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, ISOTP_SPEC_FRAME_FIRST, frame_data, frame_length); }
+        else { isotp_session_idle(session); }
+
         return;
     }
 
@@ -236,6 +252,15 @@ void handle_consecutive_frame(isotp_session_t* session, const uint8_t* frame_dat
     const uint8_t* packet_start = frame_data + ISOTP_SPEC_FRAME_CONSECUTIVE_DATASTART_IDX;
     size_t bytes_remaining = session->full_transmission_length - session->buffer_offset;
 
+    //  Safety: Ensure we don't exceed rx buffer size
+    size_t buffer_space_remaining = session->rx_len - session->buffer_offset;
+    if (packet_len > buffer_space_remaining) {
+        if (session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, ISOTP_SPEC_FRAME_CONSECUTIVE, frame_data, frame_length); }
+        else { isotp_session_idle(session); }
+
+        return;
+    }
+
     //  Add to buffer
     if (packet_len > bytes_remaining) {
         packet_len = bytes_remaining;
@@ -294,15 +319,15 @@ void handle_flow_control_frame(isotp_session_t* session, const uint8_t* frame_da
     //  Read FC flags
     isotp_flow_control_flags_t fc_flags = (isotp_flow_control_flags_t)(frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_FC_FLAGS_IDX] & ISOTP_SPEC_FRAME_FLOWCONTROL_FC_FLAGS_MASK);
 
-    //  Read pblock size
+    //  Read block size
     uint8_t block_size = ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_SEND_WITHOUT_FC;    //  Default to no FC
-    if(frame_length > ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_IDX + 1) {
+    if(frame_length >= ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_IDX + 1) {
         block_size = frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_IDX] & ISOTP_SPEC_FRAME_FLOWCONTROL_BLOCKSIZE_MASK;
     }
 
     //  Read separation time
     uint32_t separation_time = 0;
-    if(frame_length > ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_IDX + 1) {
+    if(frame_length >= ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_IDX + 1) {
         separation_time = isotp_spec_fc_separation_time_us(frame_data[ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_IDX] & ISOTP_SPEC_FRAME_FLOWCONTROL_SEPARATION_TIME_MASK);
     }
 
